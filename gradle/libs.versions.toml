@@ -1,0 +1,16 @@
+[versions]
+shadow = "9.0.1"
+guava = "33.4.8-jre"
+jspecify = "1.0.0"
+asm = "9.2"
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+
+[libraries]
+guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
+jspecify = { group = "org.jspecify", name = "jspecify", version.ref = "jspecify" }
+asm-core = { group = "org.ow2.asm", name = "asm", version.ref = "asm" }
+
+[bundles]
+asm = ["asm-core"]
