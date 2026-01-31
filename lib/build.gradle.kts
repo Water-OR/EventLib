@@ -20,10 +20,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly(libs.jetbrainsAnnontation)
-    compileOnly(libs.googleErrorProne)
-    compileOnly(libs.jspecify)
-    testCompileOnly(libs.jspecify)
+    compileOnly(libs.bundles.annontations)
+    testCompileOnly(libs.bundles.annontations)
     
     compileOnly(libs.lombok)
     testCompileOnly(libs.lombok)

@@ -6,6 +6,7 @@ import java.util.Comparator;
 import lombok.Value;
 import lombok.val;
 import net.llvg.eventlib.api.bus.EventBus;
+import net.llvg.eventlib.api.bus.ForwardingEventBus;
 import net.llvg.eventlib.api.phase.PhaseManager;
 import net.llvg.eventlib.impl.Util;
 import org.jspecify.annotations.NullMarked;
@@ -167,5 +168,24 @@ public final class EventLibTest {
         }
         
         Assertions.assertEquals(1, counter[0], "Visit count mismatch. (counter should not increase after registration auto-closed)");
+    }
+    
+    @Test
+    void testForwardingBus() {
+        val bus = new ForwardingEventBus<String>() {
+            final EventBus<String> delegate = EventBus.create("default");
+            
+            @Override
+            protected EventBus<String> delegate() {
+                return delegate;
+            }
+        };
+        
+        val visit = new int[]{ 0 };
+        
+        bus.register(TestEvent.class, e -> ++visit[0]);
+        
+        bus.post(new TestEvent());
+        Assertions.assertEquals(1, visit[0], "Visit count mismatch.");
     }
 }

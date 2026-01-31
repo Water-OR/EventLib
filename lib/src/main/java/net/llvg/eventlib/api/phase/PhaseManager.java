@@ -25,6 +25,27 @@ import net.llvg.eventlib.impl.graph.TopoSorter;
 import org.jetbrains.annotations.Unmodifiable;
 import org.jspecify.annotations.Nullable;
 
+/**
+ * Manages the execution order of event phases using a topological sort.
+ * <p>
+ * A {@code PhaseManager} maintains a dependency graph of phases (nodes) and their relationships (edges).
+ * It produces a linearized, topologically sorted list of phases that determines the order in which
+ * event listeners are invoked.
+ * <p>
+ * Key features:
+ * <ul>
+ *     <li><b>Thread-Safe:</b> Uses {@link StampedLock} and {@link ConcurrentHashMap} to allow concurrent
+ *     reads and writes. Writes (adding phases/links) do not block other writes, but will block the
+ *     sorting process.</li>
+ *     <li><b>Cycle Handling:</b> If a cycle is detected in the dependency graph, the manager uses the
+ *     provided {@link Comparator} to deterministically sort the phases involved in the cycle (Strongly Connected Component).</li>
+ *     <li><b>Reactive Caching:</b> The sorted result is cached. The {@code onDirty} callback is triggered
+ *     only when the graph structure actually changes, notifying downstream systems (like {@code EventBus})
+ *     to invalidate their caches.</li>
+ * </ul>
+ *
+ * @param <P> The type of the phase identifier (e.g., String, Identifier, or Enum).
+ */
 @ToString
 @EqualsAndHashCode
 @FieldDefaults (
@@ -38,6 +59,11 @@ public final class PhaseManager<P> {
     transient StampedLock lock = new StampedLock();
     transient AtomicReference<@Nullable @Unmodifiable List<P>> sorted = new AtomicReference<>();
     
+    /**
+     * The default phase used when no specific phase is requested during registration.
+     * <p>
+     * This phase is guaranteed to exist in the manager.
+     */
     @Getter
     P defaultPhase;
     
@@ -55,11 +81,29 @@ public final class PhaseManager<P> {
         phase2wrapper.put(this.defaultPhase, new Wrapper<>(this.defaultPhase));
     }
     
+    /**
+     * Creates a builder for a {@code PhaseManager}.
+     *
+     * @param defaultPhase The default phase identifier. Must not be null.
+     * @param <P> The phase type.
+     *
+     * @return A new Builder instance.
+     */
     @CheckReturnValue
     public static <P> Builder<P> builder(final P defaultPhase) {
         return new Builder<>(defaultPhase);
     }
     
+    /**
+     * Creates a builder for a {@code PhaseManager} where the phase type implements {@link Comparable}.
+     * <p>
+     * This builder automatically sets the comparator to {@link Comparator#naturalOrder()}.
+     *
+     * @param defaultPhase The default phase identifier.
+     * @param <P> The phase type (must be Comparable).
+     *
+     * @return A new Builder instance configured with natural order.
+     */
     @CheckReturnValue
     public static <P extends Comparable<? super P>> Builder<P> builderComparable(final P defaultPhase) {
         return new Builder<>(defaultPhase).comparator(Comparator.naturalOrder());
@@ -74,6 +118,13 @@ public final class PhaseManager<P> {
         );
     }
     
+    /**
+     * Registers a new phase node without establishing any connections.
+     *
+     * @param phase The phase to add.
+     *
+     * @return The canonical instance of the phase identifier stored in the manager.
+     */
     @CanIgnoreReturnValue
     public P add(final P phase) {
         Wrapper<P> r;
@@ -89,6 +140,15 @@ public final class PhaseManager<P> {
         return r.value;
     }
     
+    /**
+     * Establishes a happens-before relationship between two phases.
+     * <p>
+     * This method ensures that {@code earlier} will appear before {@code later} in the sorted list.
+     * If the phases do not exist, they are automatically added.
+     *
+     * @param earlier The phase that should run first.
+     * @param later The phase that should run after.
+     */
     public void link(final P earlier, final P later) {
         val stamp = lock.readLock();
         try {
@@ -106,6 +166,15 @@ public final class PhaseManager<P> {
         }
     }
     
+    /**
+     * Returns the topologically sorted list of phases.
+     * <p>
+     * The result is cached. If the graph structure has changed since the last call,
+     * the sort is re-computed. This operation requires an exclusive lock and will block
+     * any concurrent {@link #add} or {@link #link} operations.
+     *
+     * @return An unmodifiable, sorted list of phases.
+     */
     @CheckReturnValue
     public @Unmodifiable List<P> getSorted() {
         List<P> r;
@@ -145,6 +214,11 @@ public final class PhaseManager<P> {
         }
     }
     
+    /**
+     * Builder for {@link PhaseManager}.
+     *
+     * @param <P> The phase type.
+     */
     @RequiredArgsConstructor (access = AccessLevel.PRIVATE)
     @Setter
     @Accessors (
@@ -155,8 +229,20 @@ public final class PhaseManager<P> {
     public static final class Builder<P> {
         final P defaultPhase;
         Runnable onDirty = () -> { };
+        
+        /**
+         * Sets the callback to be executed when the phase graph changes.
+         * Defaults to a no-op.
+         */
         Comparator<P> comparator;
         
+        /**
+         * Builds the {@link PhaseManager}.
+         *
+         * @return A new PhaseManager instance.
+         *
+         * @throws IllegalStateException if {@code comparator} is not set and P is not Comparable.
+         */
         @CheckReturnValue
         public PhaseManager<P> build() {
             return new PhaseManager<>(
