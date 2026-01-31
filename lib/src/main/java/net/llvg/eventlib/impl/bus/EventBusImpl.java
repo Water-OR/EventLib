@@ -3,6 +3,7 @@ package net.llvg.eventlib.impl.bus;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Function;
@@ -27,10 +28,14 @@ public final class EventBusImpl<P>
     
     private final PhaseManager<P> phases;
     
-    public EventBusImpl(final PhaseManager.Builder<P> phaseManagerBuilder) {
+    private EventBusImpl(final PhaseManager.Builder<P> phaseManagerBuilder) {
         this.phases = phaseManagerBuilder
           .onDirty(() -> type2list.values().forEach(ListenerList::makeDirty))
           .build();
+    }
+    
+    public static <P> EventBusImpl<P> create(final PhaseManager.Builder<P> phaseManagerBuilder) {
+        return new EventBusImpl<>(Objects.requireNonNull(phaseManagerBuilder, "[phaseManagerBuilder] must not be null."));
     }
     
     @Override

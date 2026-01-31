@@ -35,12 +35,12 @@ public interface EventBus<P> {
     
     @CheckReturnValue
     static <P> EventBus<P> create(final PhaseManager.Builder<P> phaseManagerBuilder) {
-        return new EventBusImpl<>(phaseManagerBuilder);
+        return EventBusImpl.create(phaseManagerBuilder);
     }
     
     @CheckReturnValue
     static <P extends Comparable<? super P>> EventBus<P> create(final P defaultPhase) {
-        return new EventBusImpl<>(PhaseManager.builderComparable(defaultPhase));
+        return EventBusImpl.create(PhaseManager.builderComparable(defaultPhase));
     }
     
     interface Registration {
