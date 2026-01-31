@@ -1,16 +1,10 @@
 [versions]
-shadow = "9.0.1"
-guava = "33.4.8-jre"
-jspecify = "1.0.0"
-asm = "9.2"
-
-[plugins]
-shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+jetbrainsAnnontation = "26.0.2-1"
+googleErrorProne = "2.46.0"
+lombok = "1.18.42"
 
 [libraries]
-guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
-jspecify = { group = "org.jspecify", name = "jspecify", version.ref = "jspecify" }
-asm-core = { group = "org.ow2.asm", name = "asm", version.ref = "asm" }
-
-[bundles]
-asm = ["asm-core"]
+jspecify = { group = "org.jspecify", name = "jspecify", version = "1.0.0" }
+jetbrainsAnnontation = { group = "org.jetbrains", name = "annotations", version.ref = "jetbrainsAnnontation" }
+googleErrorProne = { group = "com.google.errorprone", name = "error_prone_annotations", version.ref = "googleErrorProne" }
+lombok = { group = "org.projectlombok", name = "lombok", version.ref = "lombok" }
