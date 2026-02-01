@@ -9,7 +9,7 @@
  * Enums, or custom objects) and define "happens-before" relationships between them using
  * {@link net.llvg.eventlib.api.phase.PhaseManager#link(Object, Object)}.
  *
- * <h2>Nullability & Return Values</h2>
+ * <h2>Nullability &amp; Return Values</h2>
  * This package is annotated with {@link org.jspecify.annotations.NullMarked}.
  * All parameters and return values are considered <b>non-null</b> by default unless explicitly
  * annotated with {@link org.jspecify.annotations.Nullable}.

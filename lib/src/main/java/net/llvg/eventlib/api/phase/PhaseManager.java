@@ -63,9 +63,13 @@ public final class PhaseManager<P> {
      * The default phase used when no specific phase is requested during registration.
      * <p>
      * This phase is guaranteed to exist in the manager.
+     *
+     * -- GETTER --
+     * Returns the default phase identifier.
+     *
+     * @return the default phase instance
      */
-    @Getter
-    P defaultPhase;
+    @Getter P defaultPhase;
     
     Comparator<Wrapper<P>> comparator;
     
@@ -228,11 +232,27 @@ public final class PhaseManager<P> {
     @FieldDefaults (level = AccessLevel.PRIVATE)
     public static final class Builder<P> {
         final P defaultPhase;
-        Runnable onDirty = () -> { };
         
         /**
+         * -- SETTER --
          * Sets the callback to be executed when the phase graph changes.
-         * Defaults to a no-op.
+         * <p>
+         * Defaults to a no-op if not specified.
+         *
+         * @param onDirty the runnable callback to execute on invalidation
+         * @return this builder instance
+         */
+        Runnable onDirty = () -> { };
+        
+        
+        /**
+         * -- SETTER --
+         * Sets the comparator used to sort phases within a cycle or when topological order is ambiguous.
+         * <p>
+         * This is mandatory if the phase type {@code P} does not implement {@link Comparable}.
+         *
+         * @param comparator the comparator for phase ordering
+         * @return this builder instance
          */
         Comparator<P> comparator;
         

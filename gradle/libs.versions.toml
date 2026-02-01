@@ -1,11 +1,15 @@
 [versions]
+freefair = "9.2.0"
+
 lombok = "1.18.42"
 jspecify = "1.0.0"
 error-prone = "2.46.0"
 jetbrains-annotations = "26.0.2-1"
 
+[plugins]
+freefair-lombok = { id = "io.freefair.lombok", version.ref = "freefair" }
+
 [libraries]
-lombok = { group = "org.projectlombok", name = "lombok", version.ref = "lombok" }
 jspecify = { group = "org.jspecify", name = "jspecify", version.ref = "jspecify" }
 jetbrains-annotations = { group = "org.jetbrains", name = "annotations", version.ref = "jetbrains-annotations" }
 error-prone-annotations = { group = "com.google.errorprone", name = "error_prone_annotations", version.ref = "error-prone" }
