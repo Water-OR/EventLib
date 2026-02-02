@@ -3,8 +3,41 @@ plugins {
     `java-library`
 }
 
+val libVersion: Provider<String> = provider {
+    fun git(vararg args: String): Provider<out String> {
+        val result = providers.exec {
+            executable("git")
+            args(*args)
+            isIgnoreExitValue = true
+        }
+        
+        @Suppress("UnstableApiUsage")
+        return result.result
+          .filter { it.exitValue == 0 }
+          .flatMap { result.standardOutput.asText }
+    }
+    
+    val tag = git("describe", "--tags", "--exact-match")
+      .map { it.trim().removePrefix("v") }
+    val hash = git("rev-parse", "--short", "HEAD")
+      .map { it.trim() }
+    val dirty = git("status", "--porcelain")
+      .map { it.trim().isNotEmpty() }
+    
+    if (tag.isPresent) return@provider tag.get()
+    
+    tag.orElse(
+        hash
+          .zip(dirty.orElse(false)) { it, dirty ->
+              if (dirty) "$it-modified" else it
+          }
+          .map { "$it-SNAPSHOT" }
+          .orElse("unknown")
+    ).get()
+}
+
 group = "net.llvg"
-version = property("lib_version") as String
+version = libVersion.get()
 base.archivesName = "EventLib"
 
 lombok {
