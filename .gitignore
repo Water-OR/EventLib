@@ -22,6 +22,3 @@ gradle-app.setting
 
 # Idea
 .idea
-
-# Test
-**/src/test/

@@ -1,16 +1,19 @@
 plugins {
+    alias(libs.plugins.freefair.lombok)
     `java-library`
-    alias(libs.plugins.shadow)
-    `maven-publish`
 }
 
 group = "net.llvg"
 version = property("lib_version") as String
 base.archivesName = "EventLib"
 
+lombok {
+    version = libs.versions.lombok
+}
+
 java {
     toolchain {
-        version = JavaLanguageVersion.of(8)
+        languageVersion = JavaLanguageVersion.of(8)
     }
     
     withSourcesJar()
@@ -21,16 +24,9 @@ repositories {
     mavenCentral()
 }
 
-val shadeImplementation by configurations.registering
-
-configurations {
-    implementation { extendsFrom(shadeImplementation.get()) }
-}
-
 dependencies {
-    compileOnly(libs.jspecify)
-    shadeImplementation(libs.guava)
-    shadeImplementation(libs.bundles.asm)
+    compileOnly(libs.bundles.annontations)
+    testCompileOnly(libs.bundles.annontations)
 }
 
 testing {
@@ -40,25 +36,25 @@ testing {
     }
 }
 
-tasks {
-    shadowJar {
-        archiveClassifier = "relocated"
-        configurations = listOf(shadeImplementation).map { it.get() }
-        relocate("com.google", "net.llvg.eventlib.lib")
-        relocate("org.objectweb", "net.llvg.eventlib.lib")
-    }
-}
 
-publishing {
-    repositories {
-        mavenLocal()
+tasks {
+    withType<Javadoc> {
+        options.encoding = "UTF-8"
+        options.jFlags("-Dfile.encoding=UTF-8")
+        exclude("**/impl/**")
     }
     
-    publications {
-        register<MavenPublication>("maven") {
-            artifact(tasks["javadocJar"])
-            artifact(tasks["sourcesJar"])
-            artifact(tasks.shadowJar)
+    named<Jar>("sourcesJar") {
+        val excluded = sourceSets.main.get().java.srcDirs.toTypedArray()
+        
+        exclude {
+            excluded.any { dir -> it.file.startsWith(dir) }
         }
+        
+        from(delombok.get().outputs)
+    }
+    
+    withType<JavaCompile> {
+        options.encoding = "UTF-8"
     }
 }
