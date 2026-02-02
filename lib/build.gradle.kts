@@ -3,27 +3,41 @@ plugins {
     `java-library`
 }
 
-val libVersion = run<_, String> {
-    fun git(vararg args: String): String? = runCatching {
-        val process = ProcessBuilder("git", *args)
-          .redirectError(ProcessBuilder.Redirect.DISCARD)
-          .start()
+val libVersion: Provider<String> = provider {
+    fun git(vararg args: String): Provider<out String> {
+        val result = providers.exec {
+            executable("git")
+            args(*args)
+            isIgnoreExitValue = true
+        }
         
-        val output = process.inputStream.bufferedReader().readText().trim()
-        if (process.waitFor() != 0 || output.isEmpty()) null else output
-    }.getOrNull()
+        @Suppress("UnstableApiUsage")
+        return result.result
+          .filter { it.exitValue == 0 }
+          .flatMap { result.standardOutput.asText }
+    }
     
-    var result = git("describe", "--tags", "--exact-match")
-    if (result != null) return@run result.removePrefix("v")
+    val tag = git("describe", "--tags", "--exact-match")
+      .map { it.trim().removePrefix("v") }
+    val hash = git("rev-parse", "--short", "HEAD")
+      .map { it.trim() }
+    val dirty = git("status", "--porcelain")
+      .map { it.trim().isNotEmpty() }
     
-    result = git("rev-parse", "--short", "HEAD")
-    if (result == null) return@run "unknown"
+    if (tag.isPresent) return@provider tag.get()
     
-    "$result-SNAPSHOT"
+    tag.orElse(
+        hash
+          .zip(dirty.orElse(false)) { it, dirty ->
+              if (dirty) "$it-modified" else it
+          }
+          .map { "$it-SNAPSHOT" }
+          .orElse("unknown")
+    ).get()
 }
 
 group = "net.llvg"
-version = libVersion
+version = libVersion.get()
 base.archivesName = "EventLib"
 
 lombok {
