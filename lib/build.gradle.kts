@@ -3,8 +3,27 @@ plugins {
     `java-library`
 }
 
+val libVersion = run<_, String> {
+    fun git(vararg args: String): String? = runCatching {
+        val process = ProcessBuilder("git", *args)
+          .redirectError(ProcessBuilder.Redirect.DISCARD)
+          .start()
+        
+        val output = process.inputStream.bufferedReader().readText().trim()
+        if (process.waitFor() != 0 || output.isEmpty()) null else output
+    }.getOrNull()
+    
+    var result = git("describe", "--tags", "--exact-match")
+    if (result != null) return@run result.removePrefix("v")
+    
+    result = git("rev-parse", "--short", "HEAD")
+    if (result == null) return@run "unknown"
+    
+    "$result-SNAPSHOT"
+}
+
 group = "net.llvg"
-version = property("lib_version") as String
+version = libVersion
 base.archivesName = "EventLib"
 
 lombok {
