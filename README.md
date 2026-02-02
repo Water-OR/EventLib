@@ -4,7 +4,7 @@
 It is designed for modular systems that require precise control over execution order.
 It is standardized using **JSpecify**, **JetBrains Annotations**, and **Google Error Prone**
 
-[![](https://jitpack.io/#Water-OR/EventLib.svg)](https://jitpack.io/#Water-OR/EventLib)
+[![](https://jitpack.io/v/Water-OR/EventLib.svg)](https://jitpack.io/#Water-OR/EventLib)
 
 ## ✨ Features
 - **🛡️ Thread-Safety:** Built with `StampedLock` using a shared-exclusive locking strategy for maximum throughput.
