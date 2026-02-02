@@ -40,12 +40,13 @@ jobs:
 
       - name: Upload Test Failure
         if: failure()
-        uses: actions/upload-artifact@6
+        uses: actions/upload-artifact@v6
         with:
           name: test-report
           path: ./lib/build/reports/tests/test/
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@6
+        uses: actions/upload-artifact@v6
         with:
-          name: ./lib/build/libs/
+          name: artifacts
+          path: ./lib/build/libs/
