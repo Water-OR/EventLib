@@ -3,7 +3,7 @@ plugins {
     `java-library`
 }
 
-val libVersion: Provider<String> = provider {
+val libVersion: Provider<String> = run {
     fun git(vararg args: String): Provider<out String> {
         val result = providers.exec {
             executable("git")
@@ -24,8 +24,6 @@ val libVersion: Provider<String> = provider {
     val dirty = git("status", "--porcelain")
       .map { it.trim().isNotEmpty() }
     
-    if (tag.isPresent) return@provider tag.get()
-    
     tag.orElse(
         hash
           .zip(dirty.orElse(false)) { it, dirty ->
@@ -33,7 +31,7 @@ val libVersion: Provider<String> = provider {
           }
           .map { "$it-SNAPSHOT" }
           .orElse("unknown")
-    ).get()
+    )
 }
 
 group = "net.llvg"
