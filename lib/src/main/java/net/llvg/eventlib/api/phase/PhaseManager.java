@@ -5,8 +5,10 @@ import com.google.errorprone.annotations.CheckReturnValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.StampedLock;
@@ -46,6 +48,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @param <P> The type of the phase identifier (e.g., String, Identifier, or Enum).
  */
+@RequiredArgsConstructor (access = AccessLevel.PRIVATE)
 @ToString
 @EqualsAndHashCode
 @FieldDefaults (
@@ -53,7 +56,7 @@ import org.jspecify.annotations.Nullable;
   makeFinal = true
 )
 public final class PhaseManager<P> {
-    ConcurrentHashMap<P, Wrapper<P>> phase2wrapper = new ConcurrentHashMap<>();
+    Map<P, Wrapper<P>> phase2wrapper;
     Runnable onDirty;
     
     transient StampedLock lock = new StampedLock();
@@ -63,45 +66,33 @@ public final class PhaseManager<P> {
      * The default phase used when no specific phase is requested during registration.
      * <p>
      * This phase is guaranteed to exist in the manager.
-     *
+     * <p>
      * -- GETTER --
      * Returns the default phase identifier.
      *
      * @return the default phase instance
      */
-    @Getter P defaultPhase;
+    @Getter
+    P defaultPhase;
     
     Comparator<Wrapper<P>> comparator;
     
-    private PhaseManager(
-      final P defaultPhase,
-      final Runnable onDirty,
-      final Comparator<P> comparator
-    ) {
-        this.defaultPhase = defaultPhase;
-        this.onDirty = onDirty;
-        this.comparator = Comparator.comparing(it -> it.value, comparator);
-        
-        phase2wrapper.put(this.defaultPhase, new Wrapper<>(this.defaultPhase));
-    }
-    
     /**
-     * Creates a builder for a {@code PhaseManager}.
+     * Creates a builder for a {@code PhaseManager} using a {@link ConcurrentHashMap}.
+     * Suitable for dynamic phase types like {@link String}.
      *
-     * @param defaultPhase The default phase identifier. Must not be null.
+     * @param defaultPhase The default phase identifier.
      * @param <P> The phase type.
      *
      * @return A new Builder instance.
      */
     @CheckReturnValue
     public static <P> Builder<P> builder(final P defaultPhase) {
-        return new Builder<>(defaultPhase);
+        return new Builder<>(new ConcurrentHashMap<>(), defaultPhase);
     }
     
     /**
      * Creates a builder for a {@code PhaseManager} where the phase type implements {@link Comparable}.
-     * <p>
-     * This builder automatically sets the comparator to {@link Comparator#naturalOrder()}.
      *
      * @param defaultPhase The default phase identifier.
      * @param <P> The phase type (must be Comparable).
@@ -110,7 +101,29 @@ public final class PhaseManager<P> {
      */
     @CheckReturnValue
     public static <P extends Comparable<? super P>> Builder<P> builderComparable(final P defaultPhase) {
-        return new Builder<>(defaultPhase).comparator(Comparator.naturalOrder());
+        return new Builder<>(new ConcurrentHashMap<>(), defaultPhase).comparator(Comparator.naturalOrder());
+    }
+    
+    /**
+     * Creates a builder specifically optimized for {@link Enum} phase types.
+     * <p>
+     * This method pre-fills an {@link EnumMap} with all constants of the enum type.
+     * Since all possible phases are pre-registered, this provides O(1) access without
+     * the overhead of concurrent hash map bucket locks.
+     *
+     * @param defaultPhase The default phase enum constant.
+     * @param <P> The enum phase type.
+     *
+     * @return A new Builder instance pre-configured for the enum.
+     */
+    @CheckReturnValue
+    public static <P extends Enum<P>> Builder<P> builderEnum(final P defaultPhase) {
+        val type = defaultPhase.getDeclaringClass();
+        val map = new EnumMap<P, Wrapper<P>>(type);
+        for (val it : type.getEnumConstants()) {
+            map.put(it, new Wrapper<>(it));
+        }
+        return new Builder<>(map, defaultPhase).comparator(Comparator.naturalOrder());
     }
     
     private Wrapper<P> makeWrapperIfAbsent(final P phase) {
@@ -231,6 +244,8 @@ public final class PhaseManager<P> {
     )
     @FieldDefaults (level = AccessLevel.PRIVATE)
     public static final class Builder<P> {
+        final Map<P, Wrapper<P>> phaseContainer;
+        
         final P defaultPhase;
         
         /**
@@ -265,10 +280,15 @@ public final class PhaseManager<P> {
          */
         @CheckReturnValue
         public PhaseManager<P> build() {
+            val comparator = Util.checkNotNull(this.comparator, "[comparator] must be specified");
+            
+            phaseContainer.putIfAbsent(defaultPhase, new Wrapper<>(defaultPhase));
+            
             return new PhaseManager<>(
-              defaultPhase,
+              phaseContainer,
               onDirty,
-              Util.checkNotNull(comparator, "[comparator] must be specified")
+              defaultPhase,
+              Comparator.comparing(it -> it.value, comparator)
             );
         }
     }

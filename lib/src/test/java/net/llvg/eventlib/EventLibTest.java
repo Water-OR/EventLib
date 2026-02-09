@@ -67,8 +67,7 @@ public final class EventLibTest {
     
     @Test
     void testCustomPhase() {
-        @Value
-        class Wrapper {
+        @Value class Wrapper {
             int value;
         }
         
@@ -85,6 +84,38 @@ public final class EventLibTest {
         
         bus.register(TestEvent.class, phase0, e -> list.add(0));
         bus.register(TestEvent.class, phase1, e -> list.add(1));
+        
+        bus.post(new TestEvent());
+        Assertions.assertEquals(
+          Arrays.asList(1, 0),
+          list,
+          "Visit order mismatch."
+        );
+    }
+    
+    enum EnumPhases {
+        ANOTHER, DEFAULT
+    }
+    
+    @Test
+    void testEnumPhase() {
+        val bus = EventBus.create(PhaseManager.builderEnum(EnumPhases.DEFAULT));
+        
+        val list = new ArrayList<Integer>();
+        
+        bus.register(TestEvent.class, EnumPhases.DEFAULT, e -> list.add(1));
+        bus.register(TestEvent.class, EnumPhases.ANOTHER, e -> list.add(0));
+        
+        bus.post(new TestEvent());
+        Assertions.assertEquals(
+          Arrays.asList(0, 1),
+          list,
+          "Visit order mismatch."
+        );
+        
+        bus.getPhases().link(EnumPhases.DEFAULT, EnumPhases.ANOTHER);
+        
+        list.clear();
         
         bus.post(new TestEvent());
         Assertions.assertEquals(
