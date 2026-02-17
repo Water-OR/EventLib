@@ -10,7 +10,7 @@ base.archivesName = "EventLib"
 
 java {
     toolchain {
-        version = JavaLanguageVersion.of(8)
+        languageVersion = JavaLanguageVersion.of(8)
     }
     
     withSourcesJar()
