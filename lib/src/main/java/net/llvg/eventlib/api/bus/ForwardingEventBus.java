@@ -1,6 +1,7 @@
 package net.llvg.eventlib.api.bus;
 
 import net.llvg.eventlib.api.phase.PhaseManager;
+import org.jetbrains.annotations.Unmodifiable;
 
 /**
  * An abstract decorator for {@link EventBus}.
@@ -27,12 +28,17 @@ public abstract class ForwardingEventBus<P>
     }
     
     @Override
-    public <E> Registration register(Class<E> type, P phase, EventListener<? super E> listener) {
+    public <E> Registration<P> register(final Class<E> type, final P phase, final EventListener<? super E> listener) {
         return delegate().register(type, phase, listener);
     }
     
     @Override
-    public <E> E post(E event) {
+    public <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type) {
+        return delegate().getSnapshot(type);
+    }
+    
+    @Override
+    public <E> E post(final E event) {
         return delegate().post(event);
     }
     

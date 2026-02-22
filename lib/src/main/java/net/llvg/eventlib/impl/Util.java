@@ -2,7 +2,10 @@ package net.llvg.eventlib.impl;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
+import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import lombok.val;
 import lombok.var;
@@ -77,5 +80,25 @@ public final class Util {
         }
         
         return builder.append(format, prevIndex, size).toString();
+    }
+    
+    private final Field arrayOfArrayList;
+    
+    static {
+        val classArrayList = ArrayList.class;
+        try {
+            arrayOfArrayList = classArrayList.getDeclaredField("elementData");
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
+        arrayOfArrayList.setAccessible(true);
+    }
+    
+    @SneakyThrows (Throwable.class)
+    public int copy(final ArrayList<?> src, final Object[] dest, final int offset) {
+        val size = src.size();
+        val array = (Object[]) arrayOfArrayList.get(src);
+        System.arraycopy(array, 0, dest, offset, size);
+        return offset + size;
     }
 }
