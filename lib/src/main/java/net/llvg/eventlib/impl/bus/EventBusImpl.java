@@ -1,6 +1,8 @@
 package net.llvg.eventlib.impl.bus;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
@@ -8,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Function;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.val;
@@ -68,7 +71,7 @@ public final class EventBusImpl<P>
     }
     
     @Override
-    public <E> EventBus.Registration register(
+    public <E> EventBus.Registration<P> register(
       final Class<E> type,
       final P phase,
       final EventListener<? super E> listener
@@ -79,23 +82,22 @@ public final class EventBusImpl<P>
     }
     
     @Override
-    public <E> E post(final E event) {
-        val sorted = makeListIfAbsent(event.getClass()).getSorted(phases);
-        
-        for (val registration : sorted) registration.invoke(event);
-        
-        return event;
+    @SuppressWarnings ("unchecked")
+    public <E> EventBus.@Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type) {
+        return (EventBus.SnapshotList<P, E>) makeListIfAbsent(type).getSorted(phases);
     }
     
     @RequiredArgsConstructor
     @ToString
     @EqualsAndHashCode
-    static final class Registration<P, E>
-      implements EventBus.Registration
+    private static final class Registration<P, E>
+      implements EventBus.Registration<P>
     {
         final ListenerList<P> list;
-        final P phase;
-        final EventListener<? super E> listener;
+        
+        @Getter final P phase;
+        
+        @Getter final EventListener<? super E> listener;
         
         volatile boolean active = true;
         
@@ -125,8 +127,8 @@ public final class EventBusImpl<P>
         }
     }
     
-    static final class ListenerList<P> {
-        static final Function<Object, ArrayList<Registration<?, ?>>> genArrayList = $ -> new ArrayList<>();
+    private static final class ListenerList<P> {
+        private static final Function<Object, ArrayList<Registration<?, ?>>> genArrayList = $ -> new ArrayList<>();
         
         final @Unmodifiable ArrayList<ListenerList<P>> dependencies;
         final ArrayList<ListenerList<P>> dependents = new ArrayList<>();
@@ -134,7 +136,7 @@ public final class EventBusImpl<P>
         final ConcurrentHashMap.KeySetView<Registration<P, ?>, Boolean> registry = ConcurrentHashMap.newKeySet();
         
         transient final StampedLock lock = new StampedLock();
-        transient volatile Registration<?, ?> @Unmodifiable @Nullable [] sorted = null;
+        transient volatile @Nullable SnapshotList<P, ?> sorted = null;
         
         ListenerList(final @Unmodifiable HashSet<ListenerList<P>> dependencies) {
             this.dependencies = new ArrayList<>(dependencies);
@@ -199,8 +201,8 @@ public final class EventBusImpl<P>
             if (registry.contains(registration)) modify(registration, false);
         }
         
-        Registration<?, ?> @Unmodifiable [] getSorted(final PhaseManager<P> manager) {
-            Registration<?, ?>[] r;
+        SnapshotList<P, ?> getSorted(final PhaseManager<P> manager) {
+            SnapshotList<P, ?> r;
             if ((r = sorted) == null) {
                 val phases = manager.getSorted();
                 
@@ -222,19 +224,20 @@ public final class EventBusImpl<P>
                             }
                         }
                         
-                        r = new Registration<?, ?>[size];
+                        @SuppressWarnings ("unchecked")
+                        final Registration<P, ?>[] b = new Registration[size];
                         
                         int i = 0;
                         for (val phase : phases) {
                             val list = phase2actions.get(phase);
-                            if (list != null) {
-                                for (val it : list) r[i++] = it;
+                            if (list != null && !list.isEmpty()) {
+                                i = Util.copy(list, b, i);
                             }
                         }
                         
                         Util.check(i == size, "{} of {} registration are processed.", i, size);
                         
-                        sorted = r;
+                        sorted = (r = new SnapshotList<>(b));
                     }
                 } finally {
                     lock.unlockWrite(stamp);
@@ -242,6 +245,52 @@ public final class EventBusImpl<P>
             }
             
             return r;
+        }
+    }
+    
+    @RequiredArgsConstructor
+    private static final class SnapshotList<P, E>
+      extends AbstractList<EventBus.Registration<P>>
+      implements EventBus.SnapshotList<P, E>
+    {
+        final Registration<P, ?>[] regs;
+        
+        @Override
+        public EventBus.Registration<P> get(final int index) {
+            return regs[index];
+        }
+        
+        @Override
+        public int size() {
+            return regs.length;
+        }
+        
+        @Override
+        public E post(final E event) {
+            for (val reg : regs) reg.invoke(event);
+            
+            return event;
+        }
+        
+        @Override
+        public Object[] toArray() {
+            return Arrays.copyOf(regs, regs.length);
+        }
+        
+        @SuppressWarnings ("all")
+        @Override
+        public <T extends @Nullable Object> T[] toArray(final T[] a) {
+            if (a.length < regs.length) {
+                return Arrays.copyOf(regs, regs.length, (Class<? extends T[]>) a.getClass());
+            }
+            
+            System.arraycopy(regs, 0, a, 0, regs.length);
+            
+            if (a.length > regs.length) {
+                a[regs.length] = null;
+            }
+            
+            return a;
         }
     }
 }

@@ -6,6 +6,7 @@ import java.util.Comparator;
 import lombok.Value;
 import lombok.val;
 import net.llvg.eventlib.api.bus.EventBus;
+import net.llvg.eventlib.api.bus.EventListener;
 import net.llvg.eventlib.api.bus.ForwardingEventBus;
 import net.llvg.eventlib.api.phase.PhaseManager;
 import net.llvg.eventlib.impl.Util;
@@ -31,6 +32,19 @@ public final class EventLibTest {
         
         bus.post(new TestEvent());
         Assertions.assertEquals(1, visit[0], "Visit count mismatch.");
+    }
+    
+    @Test
+    void testRegistrationProperties() {
+        val bus = EventBus.create("default");
+        
+        val phase = "some_phase";
+        final EventListener<TestEvent> listener = e -> { };
+        
+        val reg = bus.register(TestEvent.class, phase, listener);
+        
+        Assertions.assertEquals(phase, reg.getPhase(), "[reg.getPhase()] mismatch.");
+        Assertions.assertEquals(listener, reg.getListener(), "[reg.getListener()] mismatch.");
     }
     
     @Test
@@ -67,7 +81,8 @@ public final class EventLibTest {
     
     @Test
     void testCustomPhase() {
-        @Value class Wrapper {
+        @Value
+        class Wrapper {
             int value;
         }
         
@@ -218,5 +233,27 @@ public final class EventLibTest {
         
         bus.post(new TestEvent());
         Assertions.assertEquals(1, visit[0], "Visit count mismatch.");
+    }
+    
+    @Test
+    void testSnapshot() {
+        val bus = EventBus.create("default");
+        
+        val reg = bus.register(TestEvent.class, e -> { });
+        
+        val snapshot1 = bus.getSnapshot(TestEvent.class);
+        Assertions.assertEquals(1, snapshot1.size(), "Snapshot 1 size mismatch.");
+        Assertions.assertEquals(snapshot1.get(0), reg);
+        Assertions.assertThrows(
+          UnsupportedOperationException.class,
+          snapshot1::clear,
+          "SnapshotList should be immutable"
+        );
+        
+        bus.register(TestEvent.class, e -> { });
+        
+        val snapshot2 = bus.getSnapshot(TestEvent.class);
+        Assertions.assertEquals(1, snapshot1.size(), "Snapshot 1 size mismatch. (should not be modified)");
+        Assertions.assertEquals(2, snapshot2.size(), "Snapshot 2 size mismatch.");
     }
 }

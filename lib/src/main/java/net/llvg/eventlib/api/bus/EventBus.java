@@ -1,6 +1,7 @@
 package net.llvg.eventlib.api.bus;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,7 @@ import lombok.ToString;
 import net.llvg.eventlib.api.phase.PhaseManager;
 import net.llvg.eventlib.impl.bus.EventBusImpl;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Unmodifiable;
 
 /**
  * The core event dispatching system.
@@ -44,7 +46,7 @@ public interface EventBus<P> {
      * @return A {@link Registration} handle to control or unregister the listener.
      */
     @CanIgnoreReturnValue
-    <E> Registration register(
+    <E> Registration<P> register(
       final Class<E> type,
       final P phase,
       final EventListener<? super E> listener
@@ -63,12 +65,29 @@ public interface EventBus<P> {
      */
     @CanIgnoreReturnValue
     @ApiStatus.NonExtendable
-    default <E> Registration register(
+    default <E> Registration<P> register(
       final Class<E> type,
       final EventListener<? super E> listener
     ) {
         return register(type, getPhases().getDefaultPhase(), listener);
     }
+    
+    /**
+     * Retrieves an immutable snapshot of all active registrations for the specified event type.
+     * <p>
+     * This method is an advanced API primarily designed for framework integrations
+     * (e.g., wrapping Forge or Fabric event buses) that require index-based iteration over
+     * listeners or custom exception-handling logic.
+     * <p>
+     * The returned {@link SnapshotList} represents a frozen state of the topological sort.
+     * It is heavily optimized for both random access and direct dispatching via {@link SnapshotList#post(Object)}.
+     *
+     * @param type The class of the event.
+     * @param <E> The event type.
+     *
+     * @return A read-only snapshot containing the sorted registrations.
+     */
+    <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type);
     
     /**
      * Dispatches an event to all registered listeners.
@@ -86,7 +105,10 @@ public interface EventBus<P> {
      * @return The same event instance (useful for chaining).
      */
     @CanIgnoreReturnValue
-    <E> E post(final E event);
+    @SuppressWarnings ("unchecked")
+    default <E> E post(final E event) {
+        return getSnapshot((Class<E>) event.getClass()).post(event);
+    }
     
     /**
      * Creates a new {@code EventBus} with a custom {@link PhaseManager} configuration.
@@ -124,7 +146,21 @@ public interface EventBus<P> {
      * It is <b>not</b> {@link AutoCloseable} by default to avoid IDE warnings for long-lived listeners.
      * Use {@link #asResource()} for try-with-resources support.
      */
-    interface Registration {
+    interface Registration<P> {
+        /**
+         * Gets the underlying listener associated with this registration.
+         *
+         * @return The event listener.
+         */
+        EventListener<?> getListener();
+        
+        /**
+         * Gets the execution phase this listener is registered to.
+         *
+         * @return The phase identifier.
+         */
+        P getPhase();
+        
         /**
          * Checks if the listener is still registered in the bus.
          *
@@ -177,7 +213,7 @@ public interface EventBus<P> {
     final class Resource
       implements AutoCloseable
     {
-        private final Registration reg;
+        private final Registration<?> reg;
         
         /**
          * Unregisters the underlying listener.
@@ -186,5 +222,28 @@ public interface EventBus<P> {
         public void close() {
             reg.unregister();
         }
+    }
+    
+    /**
+     * A specialized, unmodifiable list of event registrations representing a frozen state
+     * of the event bus for a specific event type.
+     * <p>
+     * Besides standard {@link List} operations, it provides an optimized {@link #post(Object)}
+     * method to directly dispatch an event to this specific pre-computed chain of listeners.
+     *
+     * @param <P> The phase type.
+     * @param <E> The event type.
+     */
+    interface SnapshotList<P, E>
+      extends List<Registration<P>>
+    {
+        /**
+         * Dispatches the given event sequentially to all listeners within this snapshot.
+         *
+         * @param event The event instance to dispatch.
+         *
+         * @return The same event instance.
+         */
+        E post(final E event);
     }
 }
