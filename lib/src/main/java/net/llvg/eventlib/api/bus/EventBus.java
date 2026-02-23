@@ -10,6 +10,7 @@ import net.llvg.eventlib.api.phase.PhaseManager;
 import net.llvg.eventlib.impl.bus.EventBusImpl;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Unmodifiable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The core event dispatching system.
@@ -108,6 +109,23 @@ public interface EventBus<P> {
     @SuppressWarnings ("unchecked")
     default <E> E post(final E event) {
         return getSnapshot((Class<E>) event.getClass()).post(event);
+    }
+    
+    /**
+     * Posts an event and catches any exception thrown by a listener.
+     * <p>
+     * This method is highly optimized. It returns {@code null} on a successful dispatch
+     * to avoid object allocation on the hot path.
+     *
+     * @param event The event to dispatch.
+     * @param <E> The event type.
+     *
+     * @return An {@link EventError} if a listener failed, or {@code null} if successful.
+     */
+    @CanIgnoreReturnValue
+    @SuppressWarnings ("unchecked")
+    default <E> @Nullable EventError postAndCatch(final E event) {
+        return getSnapshot((Class<E>) event.getClass()).postAndCatch(event);
     }
     
     /**
@@ -245,5 +263,14 @@ public interface EventBus<P> {
          * @return The same event instance.
          */
         E post(final E event);
+        
+        /**
+         * Dispatches the event and catches the first exception thrown.
+         *
+         * @param event The event to dispatch.
+         *
+         * @return An {@link EventError} containing the failure details, or {@code null}.
+         */
+        @Nullable EventError postAndCatch(final E event);
     }
 }

@@ -256,4 +256,32 @@ public final class EventLibTest {
         Assertions.assertEquals(1, snapshot1.size(), "Snapshot 1 size mismatch. (should not be modified)");
         Assertions.assertEquals(2, snapshot2.size(), "Snapshot 2 size mismatch.");
     }
+    
+    @Test
+    void testPostAndCatch() {
+        val bus = EventBus.create("default");
+        val counter = new int[]{ 0 };
+        
+        bus.getPhases().link("earlier", "default");
+        bus.getPhases().link("default", "later");
+        
+        bus.register(TestEvent.class, "earlier", e -> ++counter[0]);
+        val reg = bus.register(
+          TestEvent.class,
+          e -> {
+              throw new RuntimeException();
+          }
+        );
+        bus.register(TestEvent.class, "later", e -> ++counter[0]);
+        
+        val error = bus.postAndCatch(new TestEvent());
+        Assertions.assertNotNull(error, "[bus.postAndCatch(new TestEvent())] should return an EventError on failure.");
+        Assertions.assertEquals(1, error.getIndex(), "[error.getIndex()] mismatch.");
+        Assertions.assertEquals(reg, error.getRegistration(), "[error.getRegistration()] mismatch.");
+        Assertions.assertEquals(1, counter[0], "Visit count mismatch (counter should not increase after exception).");
+        
+        reg.unregister();
+        val noError = bus.postAndCatch(new TestEvent());
+        Assertions.assertNull(noError, "[bus.postAndCatch(new TestEvent())] should return null on success.");
+    }
 }

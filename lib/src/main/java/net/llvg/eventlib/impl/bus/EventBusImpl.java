@@ -16,6 +16,7 @@ import lombok.ToString;
 import lombok.val;
 import lombok.var;
 import net.llvg.eventlib.api.bus.EventBus;
+import net.llvg.eventlib.api.bus.EventError;
 import net.llvg.eventlib.api.bus.EventListener;
 import net.llvg.eventlib.api.phase.PhaseManager;
 import net.llvg.eventlib.impl.Util;
@@ -270,6 +271,21 @@ public final class EventBusImpl<P>
             for (val reg : regs) reg.invoke(event);
             
             return event;
+        }
+        
+        @Override
+        public @Nullable EventError postAndCatch(E event) {
+            int i = 0;
+            
+            try {
+                for (; i < regs.length; ++i) {
+                    regs[i].invoke(event);
+                }
+            } catch (Throwable e) {
+                return new EventError(e, i, regs[i]);
+            }
+            
+            return null;
         }
         
         @Override
