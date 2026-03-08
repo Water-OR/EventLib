@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Function;
@@ -39,7 +38,7 @@ public final class EventBusImpl<P>
     }
     
     public static <P> EventBusImpl<P> create(final PhaseManager.Builder<P> phaseManagerBuilder) {
-        return new EventBusImpl<>(Objects.requireNonNull(phaseManagerBuilder, "[phaseManagerBuilder] must not be null."));
+        return new EventBusImpl<>(Util.argNotNull(phaseManagerBuilder, "phaseManagerBuilder"));
     }
     
     @Override
