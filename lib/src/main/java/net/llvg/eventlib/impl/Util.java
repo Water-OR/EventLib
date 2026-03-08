@@ -26,6 +26,13 @@ public final class Util {
         return value;
     }
     
+    @CanIgnoreReturnValue
+    @Contract ("null, _ -> fail; !null, _ -> param1")
+    public <T> T argNotNull(final @Nullable T value, final String name) {
+        if (value == null) throw new NullPointerException(format("[{}] must not be null.", name));
+        return value;
+    }
+    
     @CheckReturnValue
     public String format(final String format, final @Nullable Object... args) {
         if (format.isEmpty()) return format;

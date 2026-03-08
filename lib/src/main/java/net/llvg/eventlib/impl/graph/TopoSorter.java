@@ -4,7 +4,6 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.PriorityQueue;
 import lombok.experimental.UtilityClass;
 import lombok.val;
@@ -21,9 +20,9 @@ public final class TopoSorter {
       final Collector<? super N> collector,
       final Comparator<? super N> comparator
     ) {
-        Objects.requireNonNull(nodes, "[nodes] must not be null.");
-        Objects.requireNonNull(collector, "[collector] must not be null.");
-        Objects.requireNonNull(comparator, "[comparator] must not be null.");
+        Util.argNotNull(nodes, "nodes");
+        Util.argNotNull(collector, "collector");
+        Util.argNotNull(comparator, "comparator");
         
         val sccSet = Tarjan.compute(nodes);
         var cycleless = true;
