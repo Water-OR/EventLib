@@ -17,6 +17,7 @@ import lombok.var;
 import net.llvg.eventlib.api.bus.EventBus;
 import net.llvg.eventlib.api.bus.EventError;
 import net.llvg.eventlib.api.bus.EventListener;
+import net.llvg.eventlib.api.bus.EventTopic;
 import net.llvg.eventlib.api.phase.PhaseManager;
 import net.llvg.eventlib.impl.Util;
 import org.jetbrains.annotations.Unmodifiable;
@@ -27,13 +28,13 @@ import org.jspecify.annotations.Nullable;
 public final class EventBusImpl<P>
   implements EventBus<P>
 {
-    private final ConcurrentHashMap<Class<?>, ListenerList<P>> type2list = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<EventTopic<?>, ListenerList<P>> topic2list = new ConcurrentHashMap<>();
     
     private final PhaseManager<P> phases;
     
     private EventBusImpl(final PhaseManager.Builder<P> phaseManagerBuilder) {
         this.phases = phaseManagerBuilder
-          .onDirty(() -> type2list.values().forEach(ListenerList::makeDirty))
+          .onDirty(() -> topic2list.values().forEach(ListenerList::makeDirty))
           .build();
     }
     
@@ -46,25 +47,18 @@ public final class EventBusImpl<P>
         return phases;
     }
     
-    private ListenerList<P> makeListIfAbsent(final Class<?> type) {
+    private ListenerList<P> makeListIfAbsent(final EventTopic<?> topic) {
         ListenerList<P> r;
-        if ((r = type2list.get(type)) == null) {
+        if ((r = topic2list.get(topic)) == null) {
             val builder = new HashSet<ListenerList<P>>();
             
-            val superclass = type.getSuperclass();
-            if (superclass != null) {
-                val list = makeListIfAbsent(superclass);
-                builder.add(list);
-                builder.addAll(list.dependencies);
-            }
-            
-            for (val it : type.getInterfaces()) {
+            for (val it : topic.getSuperTopics()) {
                 val list = makeListIfAbsent(it);
                 builder.add(list);
                 builder.addAll(list.dependencies);
             }
             
-            r = type2list.computeIfAbsent(type, $ -> new ListenerList<>(builder));
+            r = topic2list.computeIfAbsent(topic, $ -> new ListenerList<>(builder));
         }
         
         return r;
@@ -72,19 +66,19 @@ public final class EventBusImpl<P>
     
     @Override
     public <E> EventBus.Registration<P> register(
-      final Class<E> type,
+      final EventTopic<E> topic,
       final P phase,
       final EventListener<? super E> listener
     ) {
-        val result = new Registration<>(makeListIfAbsent(type), phases.add(phase), listener);
+        val result = new Registration<>(makeListIfAbsent(topic), phases.add(phase), listener);
         result.list.add(result);
         return result;
     }
     
     @Override
     @SuppressWarnings ("unchecked")
-    public <E> EventBus.@Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type) {
-        return (EventBus.SnapshotList<P, E>) makeListIfAbsent(type).getSorted(phases);
+    public <E> EventBus.@Unmodifiable SnapshotList<P, E> getSnapshot(final EventTopic<E> topic) {
+        return (EventBus.SnapshotList<P, E>) makeListIfAbsent(topic).getSorted(phases);
     }
     
     @RequiredArgsConstructor
@@ -95,9 +89,11 @@ public final class EventBusImpl<P>
     {
         final ListenerList<P> list;
         
-        @Getter final P phase;
+        @Getter
+        final P phase;
         
-        @Getter final EventListener<? super E> listener;
+        @Getter
+        final EventListener<? super E> listener;
         
         volatile boolean active = true;
         

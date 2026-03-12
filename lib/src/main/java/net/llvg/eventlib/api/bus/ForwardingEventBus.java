@@ -28,18 +28,17 @@ public abstract class ForwardingEventBus<P>
     }
     
     @Override
-    public <E> Registration<P> register(final Class<E> type, final P phase, final EventListener<? super E> listener) {
-        return delegate().register(type, phase, listener);
+    public <E> Registration<P> register(
+      final EventTopic<E> topic,
+      final P phase,
+      final EventListener<? super E> listener
+    ) {
+        return delegate().register(topic, phase, listener);
     }
     
     @Override
-    public <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type) {
-        return delegate().getSnapshot(type);
-    }
-    
-    @Override
-    public <E> E post(final E event) {
-        return delegate().post(event);
+    public @Unmodifiable <E> SnapshotList<P, E> getSnapshot(final EventTopic<E> topic) {
+        return delegate().getSnapshot(topic);
     }
     
     @Override

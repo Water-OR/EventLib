@@ -33,6 +33,30 @@ public interface EventBus<P> {
      */
     PhaseManager<P> getPhases();
     
+    @CanIgnoreReturnValue
+    <E> Registration<P> register(
+      final EventTopic<E> topic,
+      final P phase,
+      final EventListener<? super E> listener
+    );
+    
+    @CanIgnoreReturnValue
+    @ApiStatus.NonExtendable
+    default <E> Registration<P> register(
+      final EventTopic<E> topic,
+      final EventListener<? super E> listener
+    ) {
+        return register(topic, getPhases().getDefaultPhase(), listener);
+    }
+    
+    @CanIgnoreReturnValue
+    <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final EventTopic<E> topic);
+    
+    @CanIgnoreReturnValue
+    default <E> E post(final EventTopic<E> topic, final E event) {
+        return getSnapshot(topic).post(event);
+    }
+    
     /**
      * Registers a listener for a specific event type at a specified phase.
      * <p>
@@ -47,11 +71,14 @@ public interface EventBus<P> {
      * @return A {@link Registration} handle to control or unregister the listener.
      */
     @CanIgnoreReturnValue
-    <E> Registration<P> register(
+    @ApiStatus.NonExtendable
+    default <E> Registration<P> register(
       final Class<E> type,
       final P phase,
       final EventListener<? super E> listener
-    );
+    ) {
+        return register(EventTopic.ofClass(type), phase, listener);
+    }
     
     /**
      * Registers a listener for a specific event type using the {@link PhaseManager#getDefaultPhase()}.
@@ -70,7 +97,7 @@ public interface EventBus<P> {
       final Class<E> type,
       final EventListener<? super E> listener
     ) {
-        return register(type, getPhases().getDefaultPhase(), listener);
+        return register(EventTopic.ofClass(type), listener);
     }
     
     /**
@@ -88,7 +115,10 @@ public interface EventBus<P> {
      *
      * @return A read-only snapshot containing the sorted registrations.
      */
-    <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type);
+    @ApiStatus.NonExtendable
+    default <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type) {
+        return getSnapshot(EventTopic.ofClass(type));
+    }
     
     /**
      * Dispatches an event to all registered listeners.
@@ -108,7 +138,7 @@ public interface EventBus<P> {
     @CanIgnoreReturnValue
     @SuppressWarnings ("unchecked")
     default <E> E post(final E event) {
-        return getSnapshot((Class<E>) event.getClass()).post(event);
+        return post(EventTopic.ofClass((Class<E>) event.getClass()), event);
     }
     
     /**
