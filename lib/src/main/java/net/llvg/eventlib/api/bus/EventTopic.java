@@ -3,16 +3,19 @@ package net.llvg.eventlib.api.bus;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Value;
+import lombok.ToString;
 import lombok.val;
 import net.llvg.eventlib.impl.Util;
 import net.llvg.eventlib.impl.bus.ClassTopicFactory;
 import org.jetbrains.annotations.Contract;
 
 @RequiredArgsConstructor (access = AccessLevel.PRIVATE)
-public @Value class EventTopic<E> {
-    Iterable<? extends EventTopic<? super E>> superTopics;
+@ToString
+public final class EventTopic<E> {
+    @Getter
+    private final Iterable<? extends EventTopic<? super E>> superTopics;
     
     public static <E> EventTopic<E> of() {
         return new EventTopic<>(Collections.emptyList());
