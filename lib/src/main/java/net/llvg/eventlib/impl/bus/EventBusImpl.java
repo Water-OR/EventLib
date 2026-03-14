@@ -52,7 +52,7 @@ public final class EventBusImpl<P>
         if ((r = topic2list.get(topic)) == null) {
             val builder = new HashSet<ListenerList<P>>();
             
-            for (val it : topic.getSuperTopics()) {
+            for (val it : topic.getSupertopics()) {
                 val list = makeListIfAbsent(it);
                 builder.add(list);
                 builder.addAll(list.dependencies);
