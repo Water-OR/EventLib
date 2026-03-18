@@ -13,56 +13,160 @@ import org.jetbrains.annotations.Unmodifiable;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The core event dispatching system.
- * <p>
- * An {@code EventBus} manages the registration and execution of event listeners based on
- * topological phases and class inheritance hierarchies.
+ * An event bus for dispatching events to registered listeners in phase order.
  *
- * @param <P> The type used to identify execution phases (e.g., {@link String}).
+ * <p>An event bus manages a collection of event topics and their registered listeners.
+ * Events are posted to topics and delivered to all active listeners in ascending phase order.
+ *
+ * <p>Example usage:
+ * <pre>{@code
+ * EventBus<Phase> bus = EventBus.create("default");
+ *
+ * EventTopic<MyEvent> topic = EventTopic.of();
+ *
+ * // Register a listener
+ * Registration<Phase> reg = bus.register(topic, "custom", event -> {
+ *     System.out.println("Received: " + event);
+ * });
+ *
+ * // Post an event
+ * bus.post(topic, new MyEvent());
+ *
+ * // Unregister when done
+ * reg.unregister();
+ * }</pre>
+ *
+ * @param <P> the phase type used for event ordering
+ * @see EventTopic
+ * @see PhaseManager
+ * @see EventListener
  */
 public interface EventBus<P> {
     /**
-     * Gets the {@link PhaseManager} associated with this bus.
-     * <p>
-     * The manager can be used to register new phases, define ordering rules (cycles are handled automatically),
-     * or inspect the current topology.
+     * Returns the phase manager for this event bus.
      *
-     * @return The phase manager instance.
-     *
-     * @see PhaseManager
+     * @return the phase manager
      */
     PhaseManager<P> getPhases();
-    
+
     /**
-     * Registers a listener for a specific event type at a specified phase.
-     * <p>
-     * The listener will be triggered when an event of class {@code type} (or any of its subclasses)
-     * is posted.
+     * Registers an event listener for a specific topic and phase.
      *
-     * @param type The class of the event to listen for.
-     * @param phase The phase identifier determining when this listener executes relative to others.
-     * @param listener The callback to execute.
-     * @param <E> The event type.
-     *
-     * @return A {@link Registration} handle to control or unregister the listener.
+     * @param topic the event topic to listen to
+     * @param phase the phase at which to receive events
+     * @param listener the event listener
+     * @param <E> the event type
+     * @return a registration handle for unregistering
      */
     @CanIgnoreReturnValue
     <E> Registration<P> register(
-      final Class<E> type,
+      final EventTopic<E> topic,
       final P phase,
       final EventListener<? super E> listener
     );
-    
+
     /**
-     * Registers a listener for a specific event type using the {@link PhaseManager#getDefaultPhase()}.
+     * Registers an event listener for a specific topic using the default phase.
      *
-     * @param type The class of the event to listen for.
-     * @param listener The callback to execute.
-     * @param <E> The event type.
+     * <p>This is an alias for:
+     * <pre>{@code register(topic, getPhases().getDefaultPhase(), listener)}</pre>
      *
-     * @return A {@link Registration} handle to control or unregister the listener.
+     * @param topic the event topic to listen to
+     * @param listener the event listener
+     * @param <E> the event type
+     * @return a registration handle for unregistering
+     * @see #register(EventTopic, Object, EventListener)
+     */
+    @CanIgnoreReturnValue
+    @ApiStatus.NonExtendable
+    default <E> Registration<P> register(
+      final EventTopic<E> topic,
+      final EventListener<? super E> listener
+    ) {
+        return register(topic, getPhases().getDefaultPhase(), listener);
+    }
+
+    /**
+     * Gets a snapshot of all registrations for a specific topic.
      *
-     * @see #register(Class, Object, EventListener)
+     * <p>The returned list is a read-only snapshot of the current registrations.
+     * New registrations added after this call are not reflected in the snapshot.
+     *
+     * @param topic the event topic
+     * @param <E> the event type
+     * @return an unmodifiable list of registrations with posting methods
+     */
+    @CanIgnoreReturnValue
+    <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final EventTopic<E> topic);
+
+    /**
+     * Posts an event to all active registrations for a specific topic.
+     *
+     * <p>This is an alias for:
+     * <pre>{@code getSnapshot(topic).post(event)}</pre>
+     *
+     * @param topic the event topic
+     * @param event the event to post
+     * @param <E> the event type
+     * @return the posted event
+     * @see SnapshotList#post(Object)
+     */
+    @CanIgnoreReturnValue
+    default <E> E post(final EventTopic<E> topic, final E event) {
+        return getSnapshot(topic).post(event);
+    }
+
+    /**
+     * Posts an event and catches any exception thrown by listeners.
+     *
+     * <p>This is an alias for:
+     * <pre>{@code getSnapshot(topic).postAndCatch(event)}</pre>
+     *
+     * @param topic the event topic
+     * @param event the event to post
+     * @param <E> the event type
+     * @return an error containing the exception if one occurred, {@code null} otherwise
+     * @see SnapshotList#postAndCatch(Object)
+     */
+    @CanIgnoreReturnValue
+    default <E> @Nullable EventError postAndCatch(final EventTopic<E> topic, final E event) {
+        return getSnapshot(topic).postAndCatch(event);
+    }
+
+    /**
+     * Registers an event listener using a class type as the event topic.
+     *
+     * <p>This is an alias for:
+     * <pre>{@code register(EventTopic.forClass(type), phase, listener)}</pre>
+     *
+     * @param type the event class
+     * @param phase the phase at which to receive events
+     * @param listener the event listener
+     * @param <E> the event type
+     * @return a registration handle for unregistering
+     * @see EventTopic#forClass(Class)
+     */
+    @CanIgnoreReturnValue
+    @ApiStatus.NonExtendable
+    default <E> Registration<P> register(
+      final Class<E> type,
+      final P phase,
+      final EventListener<? super E> listener
+    ) {
+        return register(EventTopic.forClass(type), phase, listener);
+    }
+
+    /**
+     * Registers an event listener using a class type with the default phase.
+     *
+     * <p>This is an alias for:
+     * <pre>{@code register(EventTopic.forClass(type), listener)}</pre>
+     *
+     * @param type the event class
+     * @param listener the event listener
+     * @param <E> the event type
+     * @return a registration handle for unregistering
+     * @see EventTopic#forClass(Class)
      */
     @CanIgnoreReturnValue
     @ApiStatus.NonExtendable
@@ -70,160 +174,163 @@ public interface EventBus<P> {
       final Class<E> type,
       final EventListener<? super E> listener
     ) {
-        return register(type, getPhases().getDefaultPhase(), listener);
+        return register(EventTopic.forClass(type), listener);
     }
-    
+
     /**
-     * Retrieves an immutable snapshot of all active registrations for the specified event type.
-     * <p>
-     * This method is an advanced API primarily designed for framework integrations
-     * (e.g., wrapping Forge or Fabric event buses) that require index-based iteration over
-     * listeners or custom exception-handling logic.
-     * <p>
-     * The returned {@link SnapshotList} represents a frozen state of the topological sort.
-     * It is heavily optimized for both random access and direct dispatching via {@link SnapshotList#post(Object)}.
+     * Gets a snapshot of all registrations for a topic created from a class.
      *
-     * @param type The class of the event.
-     * @param <E> The event type.
+     * <p>This is an alias for:
+     * <pre>{@code getSnapshot(EventTopic.forClass(type))}</pre>
      *
-     * @return A read-only snapshot containing the sorted registrations.
+     * @param type the event class
+     * @param <E> the event type
+     * @return an unmodifiable list of registrations with posting methods
+     * @see EventTopic#forClass(Class)
      */
-    <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type);
-    
+    @ApiStatus.NonExtendable
+    default <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type) {
+        return getSnapshot(EventTopic.forClass(type));
+    }
+
     /**
-     * Dispatches an event to all registered listeners.
-     * <p>
-     * Execution order is determined by:
-     * <ol>
-     *     <li>Phase topology (sorted by {@link PhaseManager}).</li>
-     *     <li>Within the same phase, the order is undefined but consistent.</li>
-     * </ol>
-     * This method also triggers listeners registered for superclasses or interfaces of the event type.
+     * Posts an event using its runtime class as the event topic.
      *
-     * @param event The event instance to dispatch.
-     * @param <E> The event type.
+     * <p>This is an alias for:
+     * <pre>{@code post(EventTopic.forClass(event.getClass()), event)}</pre>
      *
-     * @return The same event instance (useful for chaining).
+     * @param event the event to post
+     * @param <E> the event type
+     * @return the posted event
+     * @see EventTopic#forClass(Class)
      */
     @CanIgnoreReturnValue
     @SuppressWarnings ("unchecked")
     default <E> E post(final E event) {
-        return getSnapshot((Class<E>) event.getClass()).post(event);
+        return post(EventTopic.forClass((Class<E>) event.getClass()), event);
     }
-    
+
     /**
-     * Posts an event and catches any exception thrown by a listener.
-     * <p>
-     * This method is highly optimized. It returns {@code null} on a successful dispatch
-     * to avoid object allocation on the hot path.
+     * Posts an event using its runtime class and catches any exception.
      *
-     * @param event The event to dispatch.
-     * @param <E> The event type.
+     * <p>This is an alias for:
+     * <pre>{@code postAndCatch(EventTopic.forClass(event.getClass()), event)}</pre>
      *
-     * @return An {@link EventError} if a listener failed, or {@code null} if successful.
+     * @param event the event to post
+     * @param <E> the event type
+     * @return an error containing the exception if one occurred, {@code null} otherwise
+     * @see EventTopic#forClass(Class)
      */
     @CanIgnoreReturnValue
     @SuppressWarnings ("unchecked")
     default <E> @Nullable EventError postAndCatch(final E event) {
-        return getSnapshot((Class<E>) event.getClass()).postAndCatch(event);
+        return postAndCatch(EventTopic.forClass((Class<E>) event.getClass()), event);
     }
-    
+
     /**
-     * Creates a new {@code EventBus} with a custom {@link PhaseManager} configuration.
-     * <p>
-     * Note: The EventBus implementation will attach its own cache-invalidation logic to the builder's
-     * {@code onDirty} callback.
+     * Creates an event bus with a custom phase manager builder.
      *
-     * @param phaseManagerBuilder The builder for the underlying phase manager.
-     * @param <P> The phase type.
-     *
-     * @return A new EventBus instance.
+     * @param phaseManagerBuilder the phase manager builder
+     * @param <P> the phase type
+     * @return a new event bus instance
      */
     static <P> EventBus<P> create(final PhaseManager.Builder<P> phaseManagerBuilder) {
         return EventBusImpl.create(phaseManagerBuilder);
     }
-    
+
     /**
-     * Creates a new {@code EventBus} using the natural order of the phase type.
-     * <p>
-     * This is a convenience factory for phases that implement {@link Comparable}.
+     * Creates an event bus with a single comparable default phase.
      *
-     * @param defaultPhase The default phase used when no phase is specified during registration.
-     * @param <P> The phase type (must be Comparable).
+     * <p>This is a convenience method for creating an event bus with a single phase.
+     * The phase must implement {@code Comparable}.
      *
-     * @return A new EventBus instance.
+     * @param defaultPhase the default phase value
+     * @param <P> the phase type
+     * @return a new event bus instance
      */
     static <P extends Comparable<? super P>> EventBus<P> create(final P defaultPhase) {
         return EventBusImpl.create(PhaseManager.builderComparable(defaultPhase));
     }
-    
+
     /**
-     * A control handle for a registered listener.
-     * <p>
-     * This handle allows checking the registration status, toggling activity, or unregistering the listener.
-     * It is <b>not</b> {@link AutoCloseable} by default to avoid IDE warnings for long-lived listeners.
-     * Use {@link #asResource()} for try-with-resources support.
+     * A handle for a registered event listener.
+     *
+     * <p>Use this to control the registration, such as unregistering or temporarily
+     * disabling the listener.
+     *
+     * @param <P> the phase type
+     * @see EventBus#register(EventTopic, Object, EventListener)
      */
     interface Registration<P> {
+
         /**
-         * Gets the underlying listener associated with this registration.
+         * Returns the registered event listener.
          *
-         * @return The event listener.
+         * @return the listener
          */
         EventListener<?> getListener();
-        
+
         /**
-         * Gets the execution phase this listener is registered to.
+         * Returns the phase at which this listener was registered.
          *
-         * @return The phase identifier.
+         * @return the registration phase
          */
         P getPhase();
-        
+
         /**
-         * Checks if the listener is still registered in the bus.
+         * Checks if this registration is still active.
          *
-         * @return {@code true} if registered, {@code false} if {@link #unregister()} has been called.
+         * @return {@code true} if registered, {@code false} if unregistered
          */
         boolean isRegistered();
-        
+
         /**
-         * Permanently removes the listener from the event bus.
-         * <p>
-         * Once unregistered, the listener cannot be added back using this handle.
+         * Unregisters the listener from the event bus.
+         *
+         * <p>After calling this method, the listener will no longer receive events.
+         * This method is idempotent and safe to call multiple times.
          */
         void unregister();
-        
+
         /**
-         * Temporarily enables or disables the listener without unregistering it.
+         * Toggles the listener without unregistering it.
          *
-         * @param value {@code true} to enable, {@code false} to disable.
+         * @param value {@code true} to enable, {@code false} to disable
          */
         void setActive(final boolean value);
-        
+
         /**
-         * Checks if the listener is currently active.
+         * Checks if this listener is currently active.
          *
-         * @return {@code true} if active, {@code false} if paused.
+         * @return {@code true} if active, otherwise {@code false}
          */
         boolean isActive();
-        
+
         /**
-         * Converts this registration into an {@link AutoCloseable} resource.
-         * <p>
-         * Useful for temporary listeners within a {@code try-with-resources} block.
+         * Wraps this registration as an {@link AutoCloseable} resource.
          *
-         * @return A wrapper that calls {@link #unregister()} on close.
+         * <p>Calling {@code close()} on the returned resource is equivalent to
+         * calling {@link #unregister()}.
+         *
+         * @return a resource that unregisters on close
          */
         @ApiStatus.NonExtendable
         default Resource asResource() {
             return new Resource(this);
         }
     }
-    
+
     /**
-     * An {@link AutoCloseable} wrapper for {@link Registration}.
-     * <p>
-     * This class ensures the registration is unregistered when the resource is closed.
+     * An AutoCloseable wrapper for a Registration.
+     *
+     * <p>Useful for try-with-resources patterns:
+     * <pre>{@code
+     * try (EventBus.Resource ignored = bus.register(topic, phase, listener).asResource()) {
+     *     // listener is active
+     * } // listener is automatically unregistered
+     * }</pre>
+     *
+     * @see Registration#asResource()
      */
     @RequiredArgsConstructor (access = AccessLevel.PRIVATE)
     @ToString
@@ -232,7 +339,7 @@ public interface EventBus<P> {
       implements AutoCloseable
     {
         private final Registration<?> reg;
-        
+
         /**
          * Unregisters the underlying listener.
          */
@@ -241,35 +348,54 @@ public interface EventBus<P> {
             reg.unregister();
         }
     }
-    
+
     /**
-     * A specialized, unmodifiable list of event registrations representing a frozen state
-     * of the event bus for a specific event type.
-     * <p>
-     * Besides standard {@link List} operations, it provides an optimized {@link #post(Object)}
-     * method to directly dispatch an event to this specific pre-computed chain of listeners.
+     * A read-only snapshot of registrations for a specific event topic.
      *
-     * @param <P> The phase type.
-     * @param <E> The event type.
+     * <p>A snapshot is taken at the time of creation and does not reflect subsequent
+     * registration changes. It provides methods to post events to the captured
+     * registrations.
+     *
+     * <p>Example usage:
+     * <pre>{@code
+     * SnapshotList<Phase, MyEvent> snapshot = bus.getSnapshot(myTopic);
+     *
+     * // Iterate over registrations (in phase order)
+     * for (Registration<Phase> reg : snapshot) {
+     *     System.out.println("Phase: " + reg.getPhase());
+     * }
+     *
+     * // Post an event
+     * snapshot.post(new MyEvent());
+     * }</pre>
+     *
+     * @param <P> the phase type
+     * @param <E> the event type
+     * @see EventBus#getSnapshot(EventTopic)
+     * @see Registration
      */
     interface SnapshotList<P, E>
       extends List<Registration<P>>
     {
+
         /**
-         * Dispatches the given event sequentially to all listeners within this snapshot.
+         * Posts the event to all active registrations in phase order.
          *
-         * @param event The event instance to dispatch.
+         * <p>Only registrations where {@link Registration#isActive()} returns {@code true}
+         * receive the event. Events are delivered in ascending phase order.
          *
-         * @return The same event instance.
+         * @param event the event to post
+         * @return the posted event
          */
         E post(final E event);
-        
+
         /**
-         * Dispatches the event and catches the first exception thrown.
+         * Posts the event and catches any exception thrown by listeners.
          *
-         * @param event The event to dispatch.
+         * <p>If any listener throws an exception, delivery stops and the error is returned.
          *
-         * @return An {@link EventError} containing the failure details, or {@code null}.
+         * @param event the event to post
+         * @return an error containing the exception if one occurred, {@code null} otherwise
          */
         @Nullable EventError postAndCatch(final E event);
     }
