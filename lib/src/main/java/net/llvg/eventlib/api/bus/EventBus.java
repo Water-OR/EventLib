@@ -77,7 +77,7 @@ public interface EventBus<P> {
       final P phase,
       final EventListener<? super E> listener
     ) {
-        return register(EventTopic.ofClass(type), phase, listener);
+        return register(EventTopic.forClass(type), phase, listener);
     }
     
     /**
@@ -97,7 +97,7 @@ public interface EventBus<P> {
       final Class<E> type,
       final EventListener<? super E> listener
     ) {
-        return register(EventTopic.ofClass(type), listener);
+        return register(EventTopic.forClass(type), listener);
     }
     
     /**
@@ -117,7 +117,7 @@ public interface EventBus<P> {
      */
     @ApiStatus.NonExtendable
     default <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type) {
-        return getSnapshot(EventTopic.ofClass(type));
+        return getSnapshot(EventTopic.forClass(type));
     }
     
     /**
@@ -138,7 +138,7 @@ public interface EventBus<P> {
     @CanIgnoreReturnValue
     @SuppressWarnings ("unchecked")
     default <E> E post(final E event) {
-        return post(EventTopic.ofClass((Class<E>) event.getClass()), event);
+        return post(EventTopic.forClass((Class<E>) event.getClass()), event);
     }
     
     /**

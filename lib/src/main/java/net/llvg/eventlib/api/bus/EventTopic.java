@@ -3,6 +3,7 @@ package net.llvg.eventlib.api.bus;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -82,6 +83,22 @@ public final class EventTopic<E> {
         return new EventTopic<>(name, Collections.singletonList(Util.argNotNull(element, "element")));
     }
     
+    private static <E> EventTopic<E> ofTrusted(final @Nullable String name, final Set<EventTopic<? super E>> unique) {
+        if (unique.size() == 1) {
+            return new EventTopic<>(name, Collections.singletonList(unique.iterator().next()));
+        }
+        
+        @SuppressWarnings ("unchecked")
+        val array = (EventTopic<? super E>[]) unique.toArray(new EventTopic[0]);
+        return new EventTopic<>(name, Util.asImmutableList(array));
+    }
+    
+    @Contract ("null -> fail; !null -> param1")
+    private static <T> T checkElementNotNull(final T element) {
+        if (element == null) throw new NullPointerException("[elements] must not contain null.");
+        return element;
+    }
+    
     @SafeVarargs
     public static <E> EventTopic<E> of(final EventTopic<? super E>... elements) {
         return of(null, elements);
@@ -99,14 +116,7 @@ public final class EventTopic<E> {
             default:
                 val unique = new LinkedHashSet<EventTopic<? super E>>();
                 for (val element : elements) unique.add(checkElementNotNull(element));
-                
-                if (unique.size() == 1) {
-                    return new EventTopic<>(name, Collections.singletonList(unique.iterator().next()));
-                }
-                
-                @SuppressWarnings ("unchecked")
-                val array = (EventTopic<? super E>[]) unique.toArray(new EventTopic[0]);
-                return new EventTopic<>(name, Util.asImmutableList(array));
+                return ofTrusted(name, unique);
         }
     }
     
@@ -126,23 +136,10 @@ public final class EventTopic<E> {
         val unique = new LinkedHashSet<EventTopic<? super E>>();
         unique.add(checkElementNotNull(first));
         while (it.hasNext()) unique.add(checkElementNotNull(it.next()));
-        
-        if (unique.size() == 1) {
-            return new EventTopic<>(name, Collections.singletonList(unique.iterator().next()));
-        }
-        
-        @SuppressWarnings ("unchecked")
-        val array = (EventTopic<? super E>[]) unique.toArray(new EventTopic[0]);
-        return new EventTopic<>(name, Util.asImmutableList(array));
+        return ofTrusted(name, unique);
     }
     
-    public static <E> EventTopic<E> ofClass(final Class<E> clazz) {
+    public static <E> EventTopic<E> forClass(final Class<E> clazz) {
         return ClassTopicFactory.get(clazz);
-    }
-    
-    @Contract ("null -> fail; !null -> param1")
-    private static <T> T checkElementNotNull(final T element) {
-        if (element == null) throw new NullPointerException("[elements] must not contain null.");
-        return element;
     }
 }
