@@ -63,7 +63,6 @@ public final class EventTopic<E> {
      *
      * @see #dumpTreeAscii()
      */
-    @SuppressWarnings ("unused")
     public String dumpTree() {
         return dumpTree(new StringBuilder(), "").toString();
     }
@@ -99,7 +98,6 @@ public final class EventTopic<E> {
      *
      * @see #dumpTree()
      */
-    @SuppressWarnings ("unused")
     public String dumpTreeAscii() {
         return dumpTreeAscii(new StringBuilder(), "").toString();
     }
