@@ -57,6 +57,11 @@ public interface EventBus<P> {
         return getSnapshot(topic).post(event);
     }
     
+    @CanIgnoreReturnValue
+    default <E> @Nullable EventError postAndCatch(final EventTopic<E> topic, final E event) {
+        return getSnapshot(topic).postAndCatch(event);
+    }
+    
     /**
      * Registers a listener for a specific event type at a specified phase.
      * <p>
@@ -155,7 +160,7 @@ public interface EventBus<P> {
     @CanIgnoreReturnValue
     @SuppressWarnings ("unchecked")
     default <E> @Nullable EventError postAndCatch(final E event) {
-        return getSnapshot((Class<E>) event.getClass()).postAndCatch(event);
+        return postAndCatch(EventTopic.forClass((Class<E>) event.getClass()), event);
     }
     
     /**
