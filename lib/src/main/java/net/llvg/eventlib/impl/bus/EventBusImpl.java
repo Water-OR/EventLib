@@ -34,7 +34,7 @@ public final class EventBusImpl<P>
     
     private EventBusImpl(final PhaseManager.Builder<P> phaseManagerBuilder) {
         this.phases = phaseManagerBuilder
-          .onDirty(() -> topic2list.values().forEach(ListenerList::makeDirty))
+          .onDirty(() -> topic2list.values().forEach(ListenerList::markDirty))
           .build();
     }
     
@@ -148,7 +148,7 @@ public final class EventBusImpl<P>
             }
         }
         
-        void makeDirty() {
+        void markDirty() {
             val stamp = lock.readLock();
             try {
                 sorted = null;
