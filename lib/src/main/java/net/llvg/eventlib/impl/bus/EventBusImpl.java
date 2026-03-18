@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Function;
@@ -124,9 +125,9 @@ public final class EventBusImpl<P>
     }
     
     private static final class ListenerList<P> {
-        private static final Function<Object, ArrayList<Registration<?, ?>>> genArrayList = $ -> new ArrayList<>();
+        private static final Function<Object, ArrayList<Registration<?, ?>>> newArrayList = $ -> new ArrayList<>();
         
-        final @Unmodifiable ArrayList<ListenerList<P>> dependencies;
+        final @Unmodifiable List<ListenerList<P>> dependencies;
         final ArrayList<ListenerList<P>> dependents = new ArrayList<>();
         
         final ConcurrentHashMap.KeySetView<Registration<P, ?>, Boolean> registry = ConcurrentHashMap.newKeySet();
@@ -134,9 +135,9 @@ public final class EventBusImpl<P>
         transient final StampedLock lock = new StampedLock();
         transient volatile @Nullable SnapshotList<P, ?> sorted = null;
         
+        @SuppressWarnings ("unchecked")
         ListenerList(final @Unmodifiable HashSet<ListenerList<P>> dependencies) {
-            this.dependencies = new ArrayList<>(dependencies);
-            this.dependencies.trimToSize();
+            this.dependencies = Util.asImmutableList(dependencies.toArray(new ListenerList[0]));
             
             for (val it : this.dependencies) {
                 val stamp = it.lock.writeLock(); // exclusive lock
@@ -203,14 +204,14 @@ public final class EventBusImpl<P>
                         var size = registry.size();
                         
                         for (val reg : registry) {
-                            phase2actions.computeIfAbsent(reg.phase, genArrayList).add(reg);
+                            phase2actions.computeIfAbsent(reg.phase, newArrayList).add(reg);
                         }
                         
                         for (val it : dependencies) {
                             size += it.registry.size();
                             
                             for (val reg : it.registry) {
-                                phase2actions.computeIfAbsent(reg.phase, genArrayList).add(reg);
+                                phase2actions.computeIfAbsent(reg.phase, newArrayList).add(reg);
                             }
                         }
                         
