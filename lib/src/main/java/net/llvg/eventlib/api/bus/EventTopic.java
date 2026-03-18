@@ -14,11 +14,30 @@ import net.llvg.eventlib.impl.bus.ClassTopicFactory;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
+/**
+ * Represents an event topic (category) for the event bus system.
+ *
+ * <p>An EventTopic defines a category of events and can form hierarchies through
+ * supertopics (parent topics). Event listeners can subscribe to topics to receive
+ * events published to those topics or any of their supertopics.
+ *
+ * <p>The optional {@code name} argument passed to {@link #of(String)} is used in
+ * {@link #toString()} to provide a readable representation:
+ * {@code EventTopic[name]} when named, otherwise {@code EventTopic@<hashcode>}.
+ *
+ * @param <E> the event type bound to this topic
+ */
 @RequiredArgsConstructor (access = AccessLevel.PRIVATE)
 @Getter
 public final class EventTopic<E> {
+    /**
+     * The optional name of this topic, used in {@link #toString()}.
+     */
     private final @Nullable String name;
     
+    /**
+     * The parent topics (supertopics) of this topic.
+     */
     private final Iterable<? extends EventTopic<? super E>> supertopics;
     
     @Override
@@ -27,6 +46,23 @@ public final class EventTopic<E> {
           : "EventTopic@" + Integer.toHexString(System.identityHashCode(this));
     }
     
+    /**
+     * Returns a string representation of this topic's hierarchy tree.
+     *
+     * <p>Uses Unicode box-drawing characters to visualize the topic hierarchy.
+     * Example output:
+     * <pre>{@code
+     * EventTopic[parent]
+     * ├─ EventTopic[child1]
+     * │  ├─ EventTopic[grandchild1]
+     * │  └─ EventTopic[grandchild2]
+     * └─ EventTopic[child2]
+     * }</pre>
+     *
+     * @return string representation of the topic hierarchy
+     *
+     * @see #dumpTreeAscii()
+     */
     @SuppressWarnings ("unused")
     public String dumpTree() {
         return dumpTree(new StringBuilder(), "").toString();
@@ -47,6 +83,22 @@ public final class EventTopic<E> {
         return builder;
     }
     
+    /**
+     * Returns a string representation of this topic's hierarchy tree using ASCII characters.
+     *
+     * <p>Similar to {@link #dumpTree()} but uses ASCII characters instead of Unicode:
+     * <pre>{@code
+     * EventTopic[parent]
+     * +- EventTopic[child1]
+     * |  +- EventTopic[grandchild1]
+     * |  \- EventTopic[grandchild2]
+     * \- EventTopic[child2]
+     * }</pre>
+     *
+     * @return string representation of the topic hierarchy
+     *
+     * @see #dumpTree()
+     */
     @SuppressWarnings ("unused")
     public String dumpTreeAscii() {
         return dumpTreeAscii(new StringBuilder(), "").toString();
@@ -67,18 +119,50 @@ public final class EventTopic<E> {
         return builder;
     }
     
+    /**
+     * Creates an empty topic with no supertopics.
+     *
+     * @param <E> the event type
+     *
+     * @return empty topic
+     */
     public static <E> EventTopic<E> of() {
         return of((String) null);
     }
     
+    /**
+     * Creates a named topic with no supertopics.
+     *
+     * @param name topic name
+     * @param <E> the event type
+     *
+     * @return named empty topic
+     */
     public static <E> EventTopic<E> of(final @Nullable String name) {
         return new EventTopic<>(name, Collections.emptyList());
     }
     
+    /**
+     * Creates a topic with a single supertopic.
+     *
+     * @param element parent topic
+     * @param <E> the event type
+     *
+     * @return topic with one supertopic
+     */
     public static <E> EventTopic<E> of(final EventTopic<? super E> element) {
         return of(null, element);
     }
     
+    /**
+     * Creates a named topic with a single supertopic.
+     *
+     * @param name topic name
+     * @param element parent topic
+     * @param <E> the event type
+     *
+     * @return named topic with one supertopic
+     */
     public static <E> EventTopic<E> of(final @Nullable String name, final EventTopic<? super E> element) {
         return new EventTopic<>(name, Collections.singletonList(Util.argNotNull(element, "element")));
     }
@@ -99,11 +183,38 @@ public final class EventTopic<E> {
         return element;
     }
     
+    /**
+     * Creates a topic with supertopics from varargs.
+     *
+     * <p>Duplicate supertopics are automatically removed. The insertion order of
+     * supertopics is preserved.
+     *
+     * @param elements parent topics
+     * @param <E> the event type
+     *
+     * @return topic with supertopics
+     *
+     * @throws NullPointerException if {@code elements} is {@code null} or contains {@code null}
+     */
     @SafeVarargs
     public static <E> EventTopic<E> of(final EventTopic<? super E>... elements) {
         return of(null, elements);
     }
     
+    /**
+     * Creates a named topic with supertopics from varargs.
+     *
+     * <p>Duplicate supertopics are automatically removed. The insertion order of
+     * supertopics is preserved.
+     *
+     * @param name topic name
+     * @param elements parent topics
+     * @param <E> the event type
+     *
+     * @return named topic with supertopics
+     *
+     * @throws NullPointerException if {@code elements} is {@code null} or contains {@code null}
+     */
     @SafeVarargs
     public static <E> EventTopic<E> of(final @Nullable String name, final EventTopic<? super E>... elements) {
         switch (Util.argNotNull(elements, "elements").length) {
@@ -120,10 +231,37 @@ public final class EventTopic<E> {
         }
     }
     
+    /**
+     * Creates a topic with supertopics from an iterable.
+     *
+     * <p>Duplicate supertopics are automatically removed. The insertion order of
+     * supertopics is preserved.
+     *
+     * @param elements parent topics
+     * @param <E> the event type
+     *
+     * @return topic with supertopics
+     *
+     * @throws NullPointerException if {@code elements} is {@code null} or contains {@code null}
+     */
     public static <E> EventTopic<E> of(final Iterable<? extends EventTopic<? super E>> elements) {
         return of(null, elements);
     }
     
+    /**
+     * Creates a named topic with supertopics from an iterable.
+     *
+     * <p>Duplicate supertopics are automatically removed. The insertion order of
+     * supertopics is preserved.
+     *
+     * @param name topic name
+     * @param elements parent topics
+     * @param <E> the event type
+     *
+     * @return named topic with supertopics
+     *
+     * @throws NullPointerException if {@code elements} is {@code null} or contains {@code null}
+     */
     public static <E> EventTopic<E> of(final @Nullable String name, final Iterable<? extends EventTopic<? super E>> elements) {
         Util.argNotNull(elements, "elements");
         
@@ -139,6 +277,16 @@ public final class EventTopic<E> {
         return ofTrusted(name, unique);
     }
     
+    /**
+     * Returns the EventTopic associated with the specified event class.
+     *
+     * <p>Creates a topic if none exists for the class. Result topics are cached.
+     *
+     * @param clazz the event class
+     * @param <E> the event type
+     *
+     * @return topic for the specified class
+     */
     public static <E> EventTopic<E> forClass(final Class<E> clazz) {
         return ClassTopicFactory.get(clazz);
     }
