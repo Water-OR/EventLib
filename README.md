@@ -21,30 +21,38 @@ EventBus<String> bus = EventBus.create("default");
 
 2. Register Listeners
 ```java
-// Register to default phase
-bus.register(MyEvent.class, e -> System.out.println("I received the event!"));
-
-// Register to specific phase
-bus.register(MyEvent.class, "other", e -> System.out.println("Ciallo～(∠・ω< )⌒★"));
+void foo() {
+    // Register to default phase
+    bus.register(MyEvent.class, e -> System.out.println("I received the event!"));
+    
+    // Register to specific phase
+    bus.register(MyEvent.class, "other", e -> System.out.println("Ciallo～(∠・ω< )⌒★"));
+}
 ```
 
 3. Post Event
 ```java
-bus.post(new MyEvent());
+void foo() {
+    bus.post(new MyEvent());
+}
 ```
 
 Define Phase Order 
 ```java
-bus.getPhases().link("earlier", "later");
+void foo() {
+    bus.getPhases().link("earlier", "later");
+}
 ```
 
 Resource Management
 ```java
-EventBus.Registration<String> reg = bus.register(MyEvent.class, e -> { /* do sth */ });
-try (EventBus.Resource res = reg.asResource()) { // reg can be inlined if unused
-    bus.post(new MyEvent());
-    // do sth
-} // Automatically unregister here
+void foo() {
+    EventBus.Registration<String> reg = bus.register(MyEvent.class, e -> { /* do sth */ });
+    try (EventBus.Resource ignored = reg.asResource()) { // reg can be inlined if unused
+        bus.post(new MyEvent());
+        // do sth
+    } // Automatically unregister here
+}
 ```
 
 And More
@@ -55,8 +63,9 @@ This project is licensed under the MIT License.
 ## 💖 Acknowledgements & Inspirations
 This project is standing on the shoulders of giants. Special thanks to:
 
-- **[Fabric API](https://github.com/FabricMC/fabric-api)**: The phase ordering system is heavily inspired by Fabric's event system design.
+- **[OpenCode](https://github.com/anomalyco/opencode/)**: An open source AI coding agent. (only being used for Javadoc generation currently)
+- **[Fabric API](https://github.com/FabricMC/fabric-api/)**: The phase ordering system is heavily inspired by Fabric's event system design.
 - **[Lombok](https://projectlombok.org/)**: For making Java 8 development feel as smooth as modern languages.
 - **[JSpecify](https://jspecify.org/)**: For providing the standard for Java nullness annotations.
-- **[JetBrains Annotations](https://github.com/JetBrains/java-annotations)**: Empowering our API with `@Contract` definitions and mutability constraints.
+- **[JetBrains Annotations](https://github.com/JetBrains/java-annotations/)**: Empowering our API with `@Contract` definitions and mutability constraints.
 - **[Google Error Prone](https://errorprone.info/)**: Standardizing our return value checks and preventing common programming pitfalls.
