@@ -71,7 +71,7 @@ public final class EventBusImpl<P>
       final EventListener<? super E> listener
     ) {
         val result = new Registration<>(makeListIfAbsent(topic), phases.add(phase), listener);
-        result.list.add(result);
+        result.list.modify(result, true);
         return result;
     }
     
@@ -104,7 +104,7 @@ public final class EventBusImpl<P>
         
         @Override
         public void unregister() {
-            list.rem(this);
+            list.modify(this, false);
         }
         
         @SuppressWarnings ("unchecked")
@@ -162,6 +162,8 @@ public final class EventBusImpl<P>
         }
         
         void modify(final Registration<P, ?> registration, final boolean add) {
+            if (registry.contains(registration) == add) return;
+            
             val stamp = lock.readLock(); // shared lock
             try {
                 sorted = null;
@@ -187,14 +189,6 @@ public final class EventBusImpl<P>
             } finally {
                 lock.unlockRead(stamp);
             }
-        }
-        
-        void add(final Registration<P, ?> registration) {
-            if (!registry.contains(registration)) modify(registration, true);
-        }
-        
-        void rem(final Registration<P, ?> registration) {
-            if (registry.contains(registration)) modify(registration, false);
         }
         
         SnapshotList<P, ?> getSorted(final PhaseManager<P> manager) {
