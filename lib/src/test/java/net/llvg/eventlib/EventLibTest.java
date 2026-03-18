@@ -7,6 +7,7 @@ import lombok.Value;
 import lombok.val;
 import net.llvg.eventlib.api.bus.EventBus;
 import net.llvg.eventlib.api.bus.EventListener;
+import net.llvg.eventlib.api.bus.EventTopic;
 import net.llvg.eventlib.api.bus.ForwardingEventBus;
 import net.llvg.eventlib.api.phase.PhaseManager;
 import net.llvg.eventlib.impl.Util;
@@ -283,5 +284,128 @@ public final class EventLibTest {
         reg.unregister();
         val noError = bus.postAndCatch(new TestEvent());
         Assertions.assertNull(noError, "[bus.postAndCatch(new TestEvent())] should return null on success.");
+    }
+    
+    @Test
+    void testSimpleTopic() {
+        val bus = EventBus.create("default");
+        
+        val topic0 = EventTopic.<TestEvent>of();
+        val topicIsolated = EventTopic.<TestEvent>of();
+        
+        Assertions.assertNotEquals(topic0, topicIsolated, "Empty topics must not be equal. (object identity required)");
+        
+        val topic1 = EventTopic.<TestChildEvent>of(topic0);
+        
+        val visit = new int[]{ 0, 0, 0 };
+        
+        bus.register(topic0, $ -> ++visit[0]);
+        bus.register(topic1, $ -> ++visit[1]);
+        bus.register(topicIsolated, $ -> ++visit[2]);
+        
+        bus.post(topic0, new TestChildEvent());
+        
+        Assertions.assertEquals(1, visit[0], "Visit count mismatch.");
+        Assertions.assertEquals(0, visit[1], "Visit count mismatch. (child topic listener should not be triggered)");
+        Assertions.assertEquals(0, visit[2], "Visit count mismatch. (isolated topic listener should not be triggered)");
+        
+        bus.post(topic1, new TestChildEvent());
+        
+        Assertions.assertEquals(2, visit[0], "Visit count mismatch. (parent topic listeners should be triggered)");
+        Assertions.assertEquals(1, visit[1], "Visit count mismatch.");
+        Assertions.assertEquals(0, visit[2], "Visit count mismatch. (isolated topic listener should not be triggered)");
+    }
+    
+    @SuppressWarnings ("DataFlowIssue")
+    @Test
+    void testVarargTopic() {
+        val bus = EventBus.create("default");
+        val topic1 = EventTopic.<TestEvent>of();
+        val topic2 = EventTopic.<TestEvent>of();
+        
+        Assertions.assertThrows(NullPointerException.class,
+          () -> EventTopic.of(topic1, null)
+        );
+        Assertions.assertThrows(NullPointerException.class,
+          () -> EventTopic.of((EventTopic<Object>) null, topic1)
+        );
+        
+        val topic3 = EventTopic.<TestChildEvent>of(topic1, topic2, topic1);
+        {
+            val supertopics = new ArrayList<>();
+            for (val it : topic3.getSupertopics()) supertopics.add(it);
+            
+            Assertions.assertEquals(2, supertopics.size(), "Supertopics should be deduplicated.");
+            Assertions.assertEquals(Arrays.asList(topic1, topic2), supertopics, "Supertopics should preserve insertion order.");
+        }
+        
+        val visit = new int[]{ 0, 0 };
+        
+        bus.register(topic1, $ -> ++visit[0]);
+        bus.register(topic2, $ -> ++visit[1]);
+        
+        bus.post(topic3, new TestChildEvent());
+        
+        Assertions.assertEquals(1, visit[0], "Parent A listener visit count mismatch.");
+        Assertions.assertEquals(1, visit[1], "Parent B listener visit count mismatch.");
+    }
+    
+    @SuppressWarnings ("NullableProblems")
+    @Test
+    void testIterableTopic() {
+        val bus = EventBus.create("default");
+        val topic1 = EventTopic.<TestEvent>of();
+        val topic2 = EventTopic.<TestEvent>of();
+        
+        Assertions.assertThrows(NullPointerException.class, () -> EventTopic.of(Arrays.asList(null, topic1)));
+        Assertions.assertThrows(NullPointerException.class, () -> EventTopic.of(Arrays.asList(topic1, null)));
+        
+        val topic3 = EventTopic.<TestChildEvent>of(Arrays.asList(topic1, topic2, topic1));
+        {
+            val supertopics = new ArrayList<>();
+            for (val it : topic3.getSupertopics()) supertopics.add(it);
+            
+            Assertions.assertEquals(2, supertopics.size(), "Supertopics should be deduplicated.");
+            Assertions.assertEquals(Arrays.asList(topic1, topic2), supertopics, "Supertopics should preserve insertion order.");
+        }
+        
+        val visit = new int[]{ 0, 0 };
+        
+        bus.register(topic1, $ -> ++visit[0]);
+        bus.register(topic2, $ -> ++visit[1]);
+        
+        bus.post(topic3, new TestChildEvent());
+        
+        Assertions.assertEquals(1, visit[0], "Parent A listener visit count mismatch.");
+        Assertions.assertEquals(1, visit[1], "Parent B listener visit count mismatch.");
+    }
+    
+    @Test
+    void testDumpTree() {
+        val topic4 = EventTopic.of("T4");
+        val topic3 = EventTopic.of("T3", topic4);
+        val topic2 = EventTopic.of("T2");
+        val topic1 = EventTopic.of("T1", topic2);
+        val topic0 = EventTopic.of("T0", topic1, topic3);
+        
+        val exists = Arrays.asList("T0", "T1", "T2", "T3", "T4");
+        
+        val dumped = new String[]{
+          Assertions.assertDoesNotThrow(() -> topic0.dumpTree()),
+          Assertions.assertDoesNotThrow(() -> topic0.dumpTreeAscii())
+        };
+        
+        Assertions.assertNotNull(dumped[0]);
+        Assertions.assertNotNull(dumped[1]);
+        
+        for (val it : exists) {
+            Assertions.assertTrue(dumped[0].contains(it), "Dumped tree should contains '" + it + "'");
+            Assertions.assertTrue(dumped[1].contains(it), "Dumped tree ASCII should contains '" + it + "'");
+        }
+        
+        System.out.println("!! Dumped tree: (this is not an error)");
+        System.out.print(dumped[0]);
+        System.out.println("!! Dumped tree ASCII: (this is not an error)");
+        System.out.print(dumped[1]);
     }
 }
