@@ -284,7 +284,6 @@ public interface EventBus<P> {
      * @see EventBus#register(EventTopic, Object, EventListener)
      */
     interface Registration<P> {
-        
         /**
          * Returns the registered event listener.
          *
@@ -400,7 +399,6 @@ public interface EventBus<P> {
     interface SnapshotList<P, E>
       extends List<Registration<P>>
     {
-        
         /**
          * Posts the event to all active registrations in phase order.
          *
