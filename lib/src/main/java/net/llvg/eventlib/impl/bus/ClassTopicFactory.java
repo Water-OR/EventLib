@@ -1,7 +1,8 @@
 package net.llvg.eventlib.impl.bus;
 
 import java.util.HashSet;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
+import java.util.WeakHashMap;
 import lombok.experimental.UtilityClass;
 import lombok.val;
 import lombok.var;
@@ -11,8 +12,10 @@ import org.jetbrains.annotations.ApiStatus;
 @ApiStatus.Internal
 @UtilityClass
 public final class ClassTopicFactory {
-    private final ConcurrentHashMap<Class<?>, EventTopic<Object>> cache = new ConcurrentHashMap<>();
+    // simply prevents ClassLoader memory leak with WeakHashMap
+    private final Map<Class<?>, EventTopic<Object>> cache = new WeakHashMap<>();
     
+    // do not call directly without using synchronized
     private EventTopic<Object> getUnchecked(final Class<?> clazz) {
         var r = cache.get(clazz);
         if (r != null) return r;
@@ -26,12 +29,12 @@ public final class ClassTopicFactory {
         for (val it : interfaces) builder.add(getUnchecked(it));
         
         r = EventTopic.of(builder);
-        val o = cache.putIfAbsent(clazz, r);
-        return o != null ? o : r;
+        cache.put(clazz, r);
+        return r;
     }
     
     @SuppressWarnings ("unchecked")
-    public <E> EventTopic<E> get(final Class<E> clazz) {
+    public synchronized <E> EventTopic<E> get(final Class<E> clazz) {
         return (EventTopic<E>) getUnchecked(clazz);
     }
 }

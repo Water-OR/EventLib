@@ -18,6 +18,9 @@
  *   <li>{@link net.llvg.eventlib.api.bus.EventBus#create(net.llvg.eventlib.api.phase.PhaseManager.Builder)}
  *       - To create a bus with custom phase logic.</li>
  * </ul>
+ *
+ * <h2>Nullability &amp; Return Values</h2>
+ * See {@link net.llvg.eventlib package} for common annotation documentation.
  */
 @CheckReturnValue
 @NullMarked

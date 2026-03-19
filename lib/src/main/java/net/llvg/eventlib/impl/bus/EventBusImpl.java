@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Function;
@@ -34,7 +35,7 @@ public final class EventBusImpl<P>
     
     private EventBusImpl(final PhaseManager.Builder<P> phaseManagerBuilder) {
         this.phases = phaseManagerBuilder
-          .onDirty(() -> topic2list.values().forEach(ListenerList::makeDirty))
+          .onDirty(() -> topic2list.values().forEach(ListenerList::markDirty))
           .build();
     }
     
@@ -71,7 +72,7 @@ public final class EventBusImpl<P>
       final EventListener<? super E> listener
     ) {
         val result = new Registration<>(makeListIfAbsent(topic), phases.add(phase), listener);
-        result.list.add(result);
+        result.list.modify(result, true);
         return result;
     }
     
@@ -104,7 +105,7 @@ public final class EventBusImpl<P>
         
         @Override
         public void unregister() {
-            list.rem(this);
+            list.modify(this, false);
         }
         
         @SuppressWarnings ("unchecked")
@@ -124,9 +125,9 @@ public final class EventBusImpl<P>
     }
     
     private static final class ListenerList<P> {
-        private static final Function<Object, ArrayList<Registration<?, ?>>> genArrayList = $ -> new ArrayList<>();
+        private static final Function<Object, ArrayList<Registration<?, ?>>> newArrayList = $ -> new ArrayList<>();
         
-        final @Unmodifiable ArrayList<ListenerList<P>> dependencies;
+        final @Unmodifiable List<ListenerList<P>> dependencies;
         final ArrayList<ListenerList<P>> dependents = new ArrayList<>();
         
         final ConcurrentHashMap.KeySetView<Registration<P, ?>, Boolean> registry = ConcurrentHashMap.newKeySet();
@@ -134,9 +135,9 @@ public final class EventBusImpl<P>
         transient final StampedLock lock = new StampedLock();
         transient volatile @Nullable SnapshotList<P, ?> sorted = null;
         
+        @SuppressWarnings ("unchecked")
         ListenerList(final @Unmodifiable HashSet<ListenerList<P>> dependencies) {
-            this.dependencies = new ArrayList<>(dependencies);
-            this.dependencies.trimToSize();
+            this.dependencies = Util.asImmutableList(dependencies.toArray(new ListenerList[0]));
             
             for (val it : this.dependencies) {
                 val stamp = it.lock.writeLock(); // exclusive lock
@@ -148,7 +149,7 @@ public final class EventBusImpl<P>
             }
         }
         
-        void makeDirty() {
+        void markDirty() {
             val stamp = lock.readLock();
             try {
                 sorted = null;
@@ -162,6 +163,8 @@ public final class EventBusImpl<P>
         }
         
         void modify(final Registration<P, ?> registration, final boolean add) {
+            if (registry.contains(registration) == add) return;
+            
             val stamp = lock.readLock(); // shared lock
             try {
                 sorted = null;
@@ -189,14 +192,6 @@ public final class EventBusImpl<P>
             }
         }
         
-        void add(final Registration<P, ?> registration) {
-            if (!registry.contains(registration)) modify(registration, true);
-        }
-        
-        void rem(final Registration<P, ?> registration) {
-            if (registry.contains(registration)) modify(registration, false);
-        }
-        
         SnapshotList<P, ?> getSorted(final PhaseManager<P> manager) {
             SnapshotList<P, ?> r;
             if ((r = sorted) == null) {
@@ -209,14 +204,14 @@ public final class EventBusImpl<P>
                         var size = registry.size();
                         
                         for (val reg : registry) {
-                            phase2actions.computeIfAbsent(reg.phase, genArrayList).add(reg);
+                            phase2actions.computeIfAbsent(reg.phase, newArrayList).add(reg);
                         }
                         
                         for (val it : dependencies) {
                             size += it.registry.size();
                             
                             for (val reg : it.registry) {
-                                phase2actions.computeIfAbsent(reg.phase, genArrayList).add(reg);
+                                phase2actions.computeIfAbsent(reg.phase, newArrayList).add(reg);
                             }
                         }
                         

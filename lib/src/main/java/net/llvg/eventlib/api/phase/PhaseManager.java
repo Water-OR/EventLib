@@ -29,22 +29,20 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Manages the execution order of event phases using a topological sort.
- * <p>
- * A {@code PhaseManager} maintains a dependency graph of phases (nodes) and their relationships (edges).
- * It produces a linearized, topologically sorted list of phases that determines the order in which
- * event listeners are invoked.
- * <p>
- * Key features:
- * <ul>
- *     <li><b>Thread-Safe:</b> Uses {@link StampedLock} and {@link ConcurrentHashMap} to allow concurrent
- *     reads and writes. Writes (adding phases/links) do not block other writes, but will block the
- *     sorting process.</li>
- *     <li><b>Cycle Handling:</b> If a cycle is detected in the dependency graph, the manager uses the
- *     provided {@link Comparator} to deterministically sort the phases involved in the cycle (Strongly Connected Component).</li>
- *     <li><b>Reactive Caching:</b> The sorted result is cached. The {@code onDirty} callback is triggered
- *     only when the graph structure actually changes, notifying downstream systems (like {@code EventBus})
- *     to invalidate their caches.</li>
- * </ul>
+ *
+ * <p>Maintains a dependency graph of phases and produces a linearized, sorted list
+ * that determines the order in which event listeners are invoked.
+ *
+ * <p><b>Thread-Safety:</b> Uses {@link StampedLock} and {@link ConcurrentHashMap} for
+ * concurrent reads and writes. Writes do not block other writes but will block the
+ * sorting process.
+ *
+ * <p><b>Cycle Handling:</b> If a cycle is detected, the provided {@link Comparator}
+ * is used to deterministically sort the phases involved.
+ *
+ * <p><b>Cache Invalidation:</b> The sorted result is cached. The {@code onDirty}
+ * callback is triggered when the graph structure changes, notifying downstream
+ * systems to invalidate their caches.
  *
  * @param <P> The type of the phase identifier (e.g., String, Identifier, or Enum).
  */
@@ -63,10 +61,6 @@ public final class PhaseManager<P> {
     transient AtomicReference<@Nullable @Unmodifiable List<P>> sorted = new AtomicReference<>();
     
     /**
-     * The default phase used when no specific phase is requested during registration.
-     * <p>
-     * This phase is guaranteed to exist in the manager.
-     * <p>
      * -- GETTER --
      * Returns the default phase identifier.
      *
@@ -84,7 +78,7 @@ public final class PhaseManager<P> {
      * @param defaultPhase The default phase identifier.
      * @param <P> The phase type.
      *
-     * @return A new Builder instance.
+     * @return A new {@link Builder} instance.
      */
     @CheckReturnValue
     public static <P> Builder<P> builder(final P defaultPhase) {
@@ -97,7 +91,7 @@ public final class PhaseManager<P> {
      * @param defaultPhase The default phase identifier.
      * @param <P> The phase type (must be Comparable).
      *
-     * @return A new Builder instance configured with natural order.
+     * @return A new {@link Builder} instance configured with natural order.
      */
     @CheckReturnValue
     public static <P extends Comparable<? super P>> Builder<P> builderComparable(final P defaultPhase) {
@@ -106,15 +100,15 @@ public final class PhaseManager<P> {
     
     /**
      * Creates a builder specifically optimized for {@link Enum} phase types.
-     * <p>
-     * This method pre-fills an {@link EnumMap} with all constants of the enum type.
+     *
+     * <p>This method pre-fills an {@link EnumMap} with all constants of the enum type.
      * Since all possible phases are pre-registered, this provides O(1) access without
      * the overhead of concurrent hash map bucket locks.
      *
      * @param defaultPhase The default phase enum constant.
      * @param <P> The enum phase type.
      *
-     * @return A new Builder instance pre-configured for the enum.
+     * @return A new {@link Builder} instance pre-configured for the enum.
      */
     @CheckReturnValue
     public static <P extends Enum<P>> Builder<P> builderEnum(final P defaultPhase) {
@@ -136,11 +130,11 @@ public final class PhaseManager<P> {
     }
     
     /**
-     * Registers a new phase node without establishing any connections.
+     * Adds a phase if absent.
      *
      * @param phase The phase to add.
      *
-     * @return The canonical instance of the phase identifier stored in the manager.
+     * @return The canonical phase instance. ({@code phase} if newly added, otherwise the cached phase)
      */
     @CanIgnoreReturnValue
     public P add(final P phase) {
@@ -159,8 +153,8 @@ public final class PhaseManager<P> {
     
     /**
      * Establishes a happens-before relationship between two phases.
-     * <p>
-     * This method ensures that {@code earlier} will appear before {@code later} in the sorted list.
+     *
+     * <p>Ensures that {@code earlier} appears before {@code later} in the sorted list.
      * If the phases do not exist, they are automatically added.
      *
      * @param earlier The phase that should run first.
@@ -185,10 +179,9 @@ public final class PhaseManager<P> {
     
     /**
      * Returns the topologically sorted list of phases.
-     * <p>
-     * The result is cached. If the graph structure has changed since the last call,
-     * the sort is re-computed. This operation requires an exclusive lock and will block
-     * any concurrent {@link #add} or {@link #link} operations.
+     *
+     * <p>Rebuilds the sorted list if any phases were modified. The result is cached.
+     * This operation blocks concurrent modifications until rebuilding finishes.
      *
      * @return An unmodifiable, sorted list of phases.
      */
@@ -251,8 +244,6 @@ public final class PhaseManager<P> {
         /**
          * -- SETTER --
          * Sets the callback to be executed when the phase graph changes.
-         * <p>
-         * Defaults to a no-op if not specified.
          *
          * @param onDirty the runnable callback to execute on invalidation
          * @return this builder instance
@@ -263,8 +254,6 @@ public final class PhaseManager<P> {
         /**
          * -- SETTER --
          * Sets the comparator used to sort phases within a cycle or when topological order is ambiguous.
-         * <p>
-         * This is mandatory if the phase type {@code P} does not implement {@link Comparable}.
          *
          * @param comparator the comparator for phase ordering
          * @return this builder instance
@@ -274,7 +263,7 @@ public final class PhaseManager<P> {
         /**
          * Builds the {@link PhaseManager}.
          *
-         * @return A new PhaseManager instance.
+         * @return a new PhaseManager instance
          *
          * @throws IllegalStateException if {@code comparator} is not set and P is not Comparable.
          */
