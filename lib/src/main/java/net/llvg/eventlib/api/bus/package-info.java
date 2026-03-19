@@ -1,18 +1,18 @@
 /**
  * Contains the core interfaces and types for the EventLib system.
- * <p>
- * The main entry point is the {@link net.llvg.eventlib.api.bus.EventBus} interface, which allows
- * registering {@link net.llvg.eventlib.api.bus.EventListener}s and posting events.
+ *
+ * <p>The main entry point is the {@link net.llvg.eventlib.api.bus.EventBus} interface, which allows
+ * registering {@link net.llvg.eventlib.api.bus.EventListener}s and posting events. Related types include
+ * {@link net.llvg.eventlib.api.bus.EventTopic} for topic definition and
+ * {@link net.llvg.eventlib.api.bus.EventBus.Registration} for
+ * listener lifecycle management.
  *
  * <h2>Nullability &amp; Return Values</h2>
- * This package is annotated with {@link org.jspecify.annotations.NullMarked}.
- * All parameters and return values are considered <b>non-null</b> by default unless explicitly
- * annotated with {@link org.jspecify.annotations.Nullable}.
- * <p>
- * Additionally, methods in this package are annotated with {@link com.google.errorprone.annotations.CheckReturnValue}
- * by default, meaning the result of a method call should not be ignored (e.g., when creating a new EventBus or checking status).
+ * See {@link net.llvg.eventlib package} for common annotation documentation.
  *
  * @see net.llvg.eventlib.api.bus.EventBus
+ * @see net.llvg.eventlib.api.bus.EventTopic
+ * @see net.llvg.eventlib.api.bus.EventBus.Registration
  */
 @NullMarked
 @CheckReturnValue

@@ -31,12 +31,18 @@ import org.jspecify.annotations.Nullable;
 @Getter
 public final class EventTopic<E> {
     /**
-     * The optional name of this topic, used in {@link #toString()}.
+     * -- GETTER --
+     * Returns the optional name of this topic, used in {@link #toString()}.
+     *
+     * @return the name, or {@code null} if unnamed
      */
     private final @Nullable String name;
     
     /**
-     * The parent topics (supertopics) of this topic.
+     * -- GETTER --
+     * Returns the parent topics (supertopics) of this topic.
+     *
+     * @return the supertopics
      */
     private final Iterable<? extends EventTopic<? super E>> supertopics;
     

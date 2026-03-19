@@ -37,6 +37,7 @@ import org.jspecify.annotations.Nullable;
  * }</pre>
  *
  * @param <P> the phase type used for event ordering
+ *
  * @see EventTopic
  * @see PhaseManager
  * @see EventListener
@@ -48,7 +49,7 @@ public interface EventBus<P> {
      * @return the phase manager
      */
     PhaseManager<P> getPhases();
-
+    
     /**
      * Registers an event listener for a specific topic and phase.
      *
@@ -56,6 +57,7 @@ public interface EventBus<P> {
      * @param phase the phase at which to receive events
      * @param listener the event listener
      * @param <E> the event type
+     *
      * @return a registration handle for unregistering
      */
     @CanIgnoreReturnValue
@@ -64,7 +66,7 @@ public interface EventBus<P> {
       final P phase,
       final EventListener<? super E> listener
     );
-
+    
     /**
      * Registers an event listener for a specific topic using the default phase.
      *
@@ -74,7 +76,9 @@ public interface EventBus<P> {
      * @param topic the event topic to listen to
      * @param listener the event listener
      * @param <E> the event type
+     *
      * @return a registration handle for unregistering
+     *
      * @see #register(EventTopic, Object, EventListener)
      */
     @CanIgnoreReturnValue
@@ -85,7 +89,7 @@ public interface EventBus<P> {
     ) {
         return register(topic, getPhases().getDefaultPhase(), listener);
     }
-
+    
     /**
      * Gets a snapshot of all registrations for a specific topic.
      *
@@ -94,11 +98,12 @@ public interface EventBus<P> {
      *
      * @param topic the event topic
      * @param <E> the event type
+     *
      * @return an unmodifiable list of registrations with posting methods
      */
     @CanIgnoreReturnValue
     <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final EventTopic<E> topic);
-
+    
     /**
      * Posts an event to all active registrations for a specific topic.
      *
@@ -108,14 +113,16 @@ public interface EventBus<P> {
      * @param topic the event topic
      * @param event the event to post
      * @param <E> the event type
+     *
      * @return the posted event
+     *
      * @see SnapshotList#post(Object)
      */
     @CanIgnoreReturnValue
     default <E> E post(final EventTopic<E> topic, final E event) {
         return getSnapshot(topic).post(event);
     }
-
+    
     /**
      * Posts an event and catches any exception thrown by listeners.
      *
@@ -125,14 +132,16 @@ public interface EventBus<P> {
      * @param topic the event topic
      * @param event the event to post
      * @param <E> the event type
+     *
      * @return an error containing the exception if one occurred, {@code null} otherwise
+     *
      * @see SnapshotList#postAndCatch(Object)
      */
     @CanIgnoreReturnValue
     default <E> @Nullable EventError postAndCatch(final EventTopic<E> topic, final E event) {
         return getSnapshot(topic).postAndCatch(event);
     }
-
+    
     /**
      * Registers an event listener using a class type as the event topic.
      *
@@ -143,7 +152,9 @@ public interface EventBus<P> {
      * @param phase the phase at which to receive events
      * @param listener the event listener
      * @param <E> the event type
+     *
      * @return a registration handle for unregistering
+     *
      * @see EventTopic#forClass(Class)
      */
     @CanIgnoreReturnValue
@@ -155,7 +166,7 @@ public interface EventBus<P> {
     ) {
         return register(EventTopic.forClass(type), phase, listener);
     }
-
+    
     /**
      * Registers an event listener using a class type with the default phase.
      *
@@ -165,7 +176,9 @@ public interface EventBus<P> {
      * @param type the event class
      * @param listener the event listener
      * @param <E> the event type
+     *
      * @return a registration handle for unregistering
+     *
      * @see EventTopic#forClass(Class)
      */
     @CanIgnoreReturnValue
@@ -176,7 +189,7 @@ public interface EventBus<P> {
     ) {
         return register(EventTopic.forClass(type), listener);
     }
-
+    
     /**
      * Gets a snapshot of all registrations for a topic created from a class.
      *
@@ -185,14 +198,16 @@ public interface EventBus<P> {
      *
      * @param type the event class
      * @param <E> the event type
+     *
      * @return an unmodifiable list of registrations with posting methods
+     *
      * @see EventTopic#forClass(Class)
      */
     @ApiStatus.NonExtendable
     default <E> @Unmodifiable SnapshotList<P, E> getSnapshot(final Class<E> type) {
         return getSnapshot(EventTopic.forClass(type));
     }
-
+    
     /**
      * Posts an event using its runtime class as the event topic.
      *
@@ -201,7 +216,9 @@ public interface EventBus<P> {
      *
      * @param event the event to post
      * @param <E> the event type
+     *
      * @return the posted event
+     *
      * @see EventTopic#forClass(Class)
      */
     @CanIgnoreReturnValue
@@ -209,7 +226,7 @@ public interface EventBus<P> {
     default <E> E post(final E event) {
         return post(EventTopic.forClass((Class<E>) event.getClass()), event);
     }
-
+    
     /**
      * Posts an event using its runtime class and catches any exception.
      *
@@ -218,7 +235,9 @@ public interface EventBus<P> {
      *
      * @param event the event to post
      * @param <E> the event type
+     *
      * @return an error containing the exception if one occurred, {@code null} otherwise
+     *
      * @see EventTopic#forClass(Class)
      */
     @CanIgnoreReturnValue
@@ -226,18 +245,19 @@ public interface EventBus<P> {
     default <E> @Nullable EventError postAndCatch(final E event) {
         return postAndCatch(EventTopic.forClass((Class<E>) event.getClass()), event);
     }
-
+    
     /**
      * Creates an event bus with a custom phase manager builder.
      *
      * @param phaseManagerBuilder the phase manager builder
      * @param <P> the phase type
+     *
      * @return a new event bus instance
      */
     static <P> EventBus<P> create(final PhaseManager.Builder<P> phaseManagerBuilder) {
         return EventBusImpl.create(phaseManagerBuilder);
     }
-
+    
     /**
      * Creates an event bus with a single comparable default phase.
      *
@@ -246,12 +266,13 @@ public interface EventBus<P> {
      *
      * @param defaultPhase the default phase value
      * @param <P> the phase type
+     *
      * @return a new event bus instance
      */
     static <P extends Comparable<? super P>> EventBus<P> create(final P defaultPhase) {
         return EventBusImpl.create(PhaseManager.builderComparable(defaultPhase));
     }
-
+    
     /**
      * A handle for a registered event listener.
      *
@@ -259,31 +280,32 @@ public interface EventBus<P> {
      * disabling the listener.
      *
      * @param <P> the phase type
+     *
      * @see EventBus#register(EventTopic, Object, EventListener)
      */
     interface Registration<P> {
-
+        
         /**
          * Returns the registered event listener.
          *
          * @return the listener
          */
         EventListener<?> getListener();
-
+        
         /**
          * Returns the phase at which this listener was registered.
          *
          * @return the registration phase
          */
         P getPhase();
-
+        
         /**
          * Checks if this registration is still active.
          *
          * @return {@code true} if registered, {@code false} if unregistered
          */
         boolean isRegistered();
-
+        
         /**
          * Unregisters the listener from the event bus.
          *
@@ -291,21 +313,21 @@ public interface EventBus<P> {
          * This method is idempotent and safe to call multiple times.
          */
         void unregister();
-
+        
         /**
          * Toggles the listener without unregistering it.
          *
          * @param value {@code true} to enable, {@code false} to disable
          */
         void setActive(final boolean value);
-
+        
         /**
          * Checks if this listener is currently active.
          *
          * @return {@code true} if active, otherwise {@code false}
          */
         boolean isActive();
-
+        
         /**
          * Wraps this registration as an {@link AutoCloseable} resource.
          *
@@ -319,7 +341,7 @@ public interface EventBus<P> {
             return new Resource(this);
         }
     }
-
+    
     /**
      * An AutoCloseable wrapper for a Registration.
      *
@@ -339,7 +361,7 @@ public interface EventBus<P> {
       implements AutoCloseable
     {
         private final Registration<?> reg;
-
+        
         /**
          * Unregisters the underlying listener.
          */
@@ -348,7 +370,7 @@ public interface EventBus<P> {
             reg.unregister();
         }
     }
-
+    
     /**
      * A read-only snapshot of registrations for a specific event topic.
      *
@@ -371,13 +393,14 @@ public interface EventBus<P> {
      *
      * @param <P> the phase type
      * @param <E> the event type
+     *
      * @see EventBus#getSnapshot(EventTopic)
      * @see Registration
      */
     interface SnapshotList<P, E>
       extends List<Registration<P>>
     {
-
+        
         /**
          * Posts the event to all active registrations in phase order.
          *
@@ -385,16 +408,18 @@ public interface EventBus<P> {
          * receive the event. Events are delivered in ascending phase order.
          *
          * @param event the event to post
+         *
          * @return the posted event
          */
         E post(final E event);
-
+        
         /**
          * Posts the event and catches any exception thrown by listeners.
          *
          * <p>If any listener throws an exception, delivery stops and the error is returned.
          *
          * @param event the event to post
+         *
          * @return an error containing the exception if one occurred, {@code null} otherwise
          */
         @Nullable EventError postAndCatch(final E event);

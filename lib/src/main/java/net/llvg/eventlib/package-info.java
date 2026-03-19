@@ -20,6 +20,14 @@
  * <h2>Getting Started</h2>
  * To get started, refer to the {@link net.llvg.eventlib.api.bus.EventBus} interface to
  * create your first bus instance.
+ *
+ * <h2>Nullability &amp; Return Values</h2>
+ * This package and its subpackages are annotated with {@link org.jspecify.annotations.NullMarked}.
+ * All parameters and return values are considered <b>non-null</b> by default unless
+ * explicitly annotated with {@link org.jspecify.annotations.Nullable}.
+ * <p>
+ * Methods are annotated with {@link com.google.errorprone.annotations.CheckReturnValue} by default,
+ * meaning the result should not be ignored (e.g., when creating a new EventBus or checking status).
  */
 @CheckReturnValue
 @NullMarked
