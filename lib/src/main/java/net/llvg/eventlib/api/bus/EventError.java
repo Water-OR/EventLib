@@ -13,27 +13,24 @@ import lombok.Value;
 public @Value class EventError {
     /**
      * The exception thrown by the failing listener.
-     *
      * -- GETTER --
      * Returns the exception thrown by the failing listener.
      *
      * @return the exception
      */
     Throwable exception;
-
+    
     /**
      * The index of the failing listener within the dispatch snapshot
-     *
      * -- GETTER --
      * Returns the index of the failing listener within the dispatch snapshot.
      *
      * @return the index
      */
     int index;
-
+    
     /**
      * The registration handle of the failing listener
-     *
      * -- GETTER --
      * Returns the registration handle of the failing listener.
      *

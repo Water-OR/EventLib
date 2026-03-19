@@ -77,6 +77,7 @@ public final class PhaseManager<P> {
      *
      * @param defaultPhase The default phase identifier.
      * @param <P> The phase type.
+     *
      * @return A new {@link Builder} instance.
      */
     @CheckReturnValue
@@ -89,6 +90,7 @@ public final class PhaseManager<P> {
      *
      * @param defaultPhase The default phase identifier.
      * @param <P> The phase type (must be Comparable).
+     *
      * @return A new {@link Builder} instance configured with natural order.
      */
     @CheckReturnValue
@@ -105,6 +107,7 @@ public final class PhaseManager<P> {
      *
      * @param defaultPhase The default phase enum constant.
      * @param <P> The enum phase type.
+     *
      * @return A new {@link Builder} instance pre-configured for the enum.
      */
     @CheckReturnValue
@@ -130,6 +133,7 @@ public final class PhaseManager<P> {
      * Adds a phase if absent.
      *
      * @param phase The phase to add.
+     *
      * @return The canonical phase instance. ({@code phase} if newly added, otherwise the cached phase)
      */
     @CanIgnoreReturnValue
@@ -260,6 +264,7 @@ public final class PhaseManager<P> {
          * Builds the {@link PhaseManager}.
          *
          * @return a new PhaseManager instance
+         *
          * @throws IllegalStateException if {@code comparator} is not set and P is not Comparable.
          */
         @CheckReturnValue

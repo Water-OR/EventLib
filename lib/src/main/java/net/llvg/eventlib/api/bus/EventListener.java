@@ -4,6 +4,7 @@ package net.llvg.eventlib.api.bus;
  * A functional interface for handling events registered to an {@link EventTopic}.
  *
  * @param <E> The type of event to handle.
+ *
  * @see EventBus#post(Object)
  * @see EventBus#register(EventTopic, Object, EventListener)
  */
