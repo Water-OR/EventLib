@@ -71,8 +71,12 @@ public final class EventBusImpl<P>
       final P phase,
       final EventListener<? super E> listener
     ) {
-        val result = new Registration<>(makeListIfAbsent(topic), phases.add(phase), listener);
-        result.list.modify(result, true);
+        val list = makeListIfAbsent(topic);
+        
+        val result = new Registration<>(phases.add(phase), listener);
+        result.list = list;
+        
+        list.modify(result, true);
         return result;
     }
     
@@ -88,7 +92,7 @@ public final class EventBusImpl<P>
     private static final class Registration<P, E>
       implements EventBus.Registration<P>
     {
-        final ListenerList<P> list;
+        transient volatile @Nullable ListenerList<P> list;
         
         @Getter
         final P phase;
@@ -100,12 +104,17 @@ public final class EventBusImpl<P>
         
         @Override
         public boolean isRegistered() {
-            return list.contains(this);
+            val list = this.list;
+            return list != null && list.contains(this);
         }
         
         @Override
         public void unregister() {
-            list.modify(this, false);
+            val list = this.list;
+            if (list != null) {
+                list.modify(this, false);
+                this.list = null;
+            }
         }
         
         @SuppressWarnings ("unchecked")
